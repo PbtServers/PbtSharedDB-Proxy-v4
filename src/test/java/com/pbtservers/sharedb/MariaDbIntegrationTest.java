@@ -31,6 +31,14 @@ class MariaDbIntegrationTest {
         config=configurations.load();process=new ProcessManager(root);
     }
     @AfterEach void cleanup() throws Exception { if(process!=null)process.stop(); }
+    @Test void missingNativeToolFailsBeforeInitializingData() throws Exception {
+        Path file=root.resolve("config.yml");
+        Files.writeString(file,Files.readString(file).replace("binary-path: /usr/sbin/mariadbd","binary-path: /usr/sbin/mariadbd-ausente"));
+        config=new ConfigurationManager(root).load();
+        assertThrows(java.io.IOException.class,()->process.start(config));
+        assertEquals(ProcessManager.State.FAILED,process.state());assertFalse(Files.exists(config.data()));
+        assertTrue(process.info().contains("bibliotecas nativas"));
+    }
     @Test void neverReinitializesAnExistingUnownedDirectory() throws Exception {
         Files.createDirectory(config.data());Path existing=config.data().resolve("archivo-existente");Files.writeString(existing,"conservar");
         assertThrows(java.io.IOException.class,()->process.start(config));assertEquals(ProcessManager.State.FAILED,process.state());

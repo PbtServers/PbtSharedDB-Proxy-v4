@@ -11,6 +11,7 @@ public final class ProcessManager implements AutoCloseable {
     public enum State { STOPPED, STARTING, READY, STOPPING, FAILED }
     private final Path root;
     private volatile State state=State.STOPPED;
+    private volatile String diagnostic="sin iniciar";
     private volatile Process process;
     private FileChannel lockChannel;
     private FileLock lock;
@@ -23,7 +24,7 @@ public final class ProcessManager implements AutoCloseable {
     public ProcessManager(Path root) { this.root=root.toAbsolutePath().normalize(); }
     public State state() {
         Process current=process;
-        if (state==State.READY && current!=null && !current.isAlive()) state=State.FAILED;
+        if (state==State.READY && current!=null && !current.isAlive()) { diagnostic="fallo: mariadbd terminó después de READY";state=State.FAILED; }
         return state;
     }
     public synchronized void start(ConfigurationManager.Config settings) throws Exception {
@@ -33,22 +34,29 @@ public final class ProcessManager implements AutoCloseable {
         if (!settings.enabled()) throw new IOException("Plugin deshabilitado: revise enabled en config.yml");
         state=State.STARTING;config=settings;
         try {
+            diagnostic="comprobando puerto SQL";
+            checkPort(settings.host(),settings.port());
+            diagnostic="comprobando binarios, arquitectura y bibliotecas nativas";
             runtime=new RuntimeManager(root).resolve(settings);
+            diagnostic="comprobando permisos, escritura y bloqueo del volumen";
             Path data=SafeFiles.child(root,root.relativize(settings.data()).toString());
             SafeFiles.directory(data);
             Path canonicalData=data.toRealPath();
+            probeWritable(data);
             if (!LOCAL_LOCKS.add(canonicalData)) throw new IOException("Datadir ya administrado en esta JVM");
             localLock=canonicalData;
             lockChannel=FileChannel.open(SafeFiles.child(data,".pbtsharedb.lock"),StandardOpenOption.CREATE,StandardOpenOption.WRITE);
             lock=lockChannel.tryLock();
             if (lock==null) throw new IOException("Datadir bloqueado por otra instancia");
             Path run=SafeFiles.child(root,"run"); SafeFiles.directory(run);
+            probeWritable(run);
             socket=SafeFiles.child(run,"mariadb.sock");
             if (socket.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>100) throw new IOException("Ruta de socket demasiado larga; acorte la ruta del servidor");
             // No borrar sockets/PID heredados: pueden pertenecer a un proceso aún activo.
             if (Files.exists(socket,LinkOption.NOFOLLOW_LINKS) || Files.exists(run.resolve("mariadb.pid")))
                 throw new IOException("Socket/PID existente: confirme que no queda mariadbd activo; consulte recuperación en docs/PTERODACTYL.md");
             Path marker=SafeFiles.child(data,".pbtsharedb-owned");
+            diagnostic="validando propiedad e inicialización del datadir";
             if (!Files.exists(marker)) {
                 try (var entries=Files.list(data)) {
                     if (entries.anyMatch(p->!p.getFileName().toString().equals(".pbtsharedb.lock"))) throw new IOException("Datadir existente sin marca de propiedad: no se inicializa ni modifica");
@@ -63,17 +71,29 @@ public final class ProcessManager implements AutoCloseable {
                 throw new IOException("Datadir incompleto o versión diferente. No se actualiza ni reinicializa automáticamente");
             }
             database=new DatabaseManager(root,runtime,socket);
+            diagnostic="aprovisionando cuentas por socket sin TCP";
             launch(false);
             database.secureAndProvision(settings);
             terminate(false);
             checkPort(settings.host(),settings.port());
+            diagnostic="esperando SELECT 1 TCP autenticado";
             launch(true);
             state=State.READY;
+            diagnostic="validaciones completadas; SQL autenticado disponible";
         } catch (Exception e) {
+            diagnostic="fallo: "+diagnostic;
             try { terminate(true); } catch (Exception suppressed) { e.addSuppressed(suppressed); }
             state=State.FAILED;
             throw e;
         }
+    }
+    static void probeWritable(Path directory) throws IOException {
+        Path probe=null;
+        try {
+            probe=Files.createTempFile(directory,"preflight-",".tmp");
+            SafeFiles.write(probe,"comprobación de escritura\n");
+        } catch (IOException e) { throw new IOException("No se puede escribir en el volumen; revise UID, permisos, espacio y montaje de solo lectura",e); }
+        finally { if(probe!=null) Files.deleteIfExists(probe); }
     }
     static void checkPort(String host,int port) throws IOException {
         // Linux conserva conexiones cerradas en TIME_WAIT. MariaDB reutiliza esas
@@ -141,7 +161,7 @@ public final class ProcessManager implements AutoCloseable {
     public String info() {
         State current=state();
         String label=switch(current) { case STOPPED -> "detenido";case STARTING -> "iniciando";case READY -> "listo";case STOPPING -> "deteniendo";case FAILED -> "fallo"; };
-        return "Estado: "+label+" ("+current+"). Reinicios automáticos: desactivados. "+(config==null?"":"Puerto SQL: "+config.port()+". MariaDB: "+RuntimeManager.VERSION+".");
+        return "Estado: "+label+" ("+current+"). Diagnóstico: "+diagnostic+". Reinicios automáticos: desactivados. "+(config==null?"":"Puerto SQL: "+config.port()+". MariaDB: "+RuntimeManager.VERSION+".");
     }
     @Override public void close() throws Exception { stop(); }
 }

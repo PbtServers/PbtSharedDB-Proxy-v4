@@ -19,6 +19,24 @@ class ProcessTest {
             assertThrows(IOException.class,()->ProcessManager.checkPort("127.0.0.1",socket.getLocalPort()));
         }
     }
+    @Test void writablePreflightLeavesNoFilesAndReportsMissingDirectory() throws Exception {
+        ProcessManager.probeWritable(root);
+        try (var files=Files.list(root)) { assertEquals(0,files.count()); }
+        IOException error=assertThrows(IOException.class,()->ProcessManager.probeWritable(root.resolve("ausente")));
+        assertTrue(error.getMessage().contains("permisos"));
+    }
+    @Test void busyPortFailsBeforeInitializingData() throws Exception {
+        var configurations=new ConfigurationManager(root);configurations.load();
+        Path file=root.resolve("config.yml");
+        try (ServerSocket socket=new ServerSocket(0,1,InetAddress.getByName("127.0.0.1"))) {
+            Files.writeString(file,Files.readString(file).replace("enabled: false","enabled: true")
+                .replace("port: 3306","port: "+socket.getLocalPort()));
+            var config=configurations.load();var process=new ProcessManager(root);
+            assertThrows(IOException.class,()->process.start(config));
+            assertEquals(ProcessManager.State.FAILED,process.state());assertFalse(Files.exists(config.data()));
+            assertTrue(process.info().contains("fallo: comprobando puerto SQL"));process.stop();
+        }
+    }
     @Test void occupiedReusablePortIsRejectedIncludingWildcard() throws Exception {
         try (ServerSocket socket=new ServerSocket()) {
             socket.setReuseAddress(true);socket.bind(new InetSocketAddress("127.0.0.1",0));
