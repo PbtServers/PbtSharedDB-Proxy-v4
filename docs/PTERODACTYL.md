@@ -1,5 +1,11 @@
 # Instalación en Pterodactyl / Wings
 
+La [integración Docker Linux](EVIDENCIAS-LINUX-2026-10-26.md) ya ha pasado
+con MariaDB real, persistencia tras parada/arranque del gestor, SQL entre
+contenedores y copia/restauración lógica. Se ejecutó en un runner de Actions,
+sin Panel ni Wings. No acredita reinicio del contenedor, asignaciones/NAT,
+firewall o plazo de parada de Wings; consulte la [matriz](INTEGRACION-REAL.md).
+
 Cada servidor (Velocity, Lobby, Survival, Creative) está en su propio contenedor. MariaDB se ejecuta como proceso hijo dentro del contenedor Velocity; no hay Egg SQL separado. `127.0.0.1` desde Lobby apunta a Lobby. No sirve como dirección SQL del proxy para los backends.
 
 ## Imagen compatible y persistencia

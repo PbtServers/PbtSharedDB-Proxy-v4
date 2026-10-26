@@ -8,5 +8,8 @@
 - Configuración YAML validada, cuentas de socket administrativas, usuarios TCP por host y credenciales privadas aleatorias.
 - Comandos administrativos, copia lógica con bloqueo global y retención.
 - Pruebas unitarias y suite de integración MariaDB real separada, CI y documentación española para Wings/LuckPerms/seguridad/restauración.
-- Carga real y comandos comprobados en Velocity 4.3.0 build 44 con Java 25 y motor deshabilitado; 19 pruebas unitarias correctas.
-- Pendiente de ejecutar aceptación Linux, contenedores y LuckPerms; no se afirma aprobación de producción.
+- Carga real y comandos comprobados en Velocity 4.3.0 build 44 con Java 25 y motor deshabilitado; 20 pruebas unitarias correctas.
+- Corrección del laboratorio Linux: fuentes escribibles por mysql y coordinación privada mediante docker exec, conservando permisos 0700/0600.
+- Corrección de la sonda TCP Linux para reinicios con conexiones en TIME_WAIT, conservando el rechazo de listeners activos.
+- Dos tests de integración reales correctos en Actions: inicialización MariaDB, SQL entre contenedores, persistencia y backup/restauración. Véanse las evidencias enlazadas en la matriz de aceptación.
+- Pendiente de aceptación en Wings y LuckPerms; no se afirma aprobación de producción.

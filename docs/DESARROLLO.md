@@ -51,7 +51,11 @@ GitHub Actions compila, ejecuta unitarios, publica el JAR como artefacto y prepa
 
 La carga en Velocity oficial se comprueba con `python tests/velocity_smoke.py --velocity /ruta/velocity-4.3.0-44.jar --plugin build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar`. La prueba exige el JAR de proxy ya descargado/verificado, genera una configuración con escucha loopback y puerto efímero y comprueba carga, status, ayuda, alias/recarga y cierre. El motor SQL permanece deshabilitado. Conserva un archivo .log bajo build/reports/velocity-smoke/; el entorno de trabajo privado queda fuera de los informes para no publicar forwarding.secret ni configuraciones. CI descarga y verifica el build oficial fijado antes de ejecutarla.
 
-Pendiente de validación de infraestructura: clientes desde otros contenedores, MariaDB Linux, apagado con Wings, integración LuckPerms y exposición/firewall. No se deben convertir esas tareas en afirmaciones basadas solo en unitarios. Consulte [PTERODACTYL.md](PTERODACTYL.md) para aceptación manual.
+MariaDB Linux y las consultas desde otros contenedores han pasado en Actions,
+incluyendo persistencia, parada del proceso gestionado y backup/restauración
+lógica: [evidencias](EVIDENCIAS-LINUX-2026-10-26.md). Siguen pendientes apagado
+y reinicio del contenedor con Wings, integración LuckPerms y exposición/firewall.
+Consulte [PTERODACTYL.md](PTERODACTYL.md) para aceptación manual.
 
 ## Contribuciones
 

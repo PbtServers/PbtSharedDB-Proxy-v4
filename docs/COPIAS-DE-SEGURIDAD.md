@@ -10,7 +10,12 @@ Los archivos son privados 0600 bajo backups/, el directorio 0700. Un dump no con
 
 ## Restauración lógica en un entorno aislado
 
-La prueba `MariaDbIntegrationTest` implementa esta secuencia con MariaDB real: inicialización, INSERT, dump, reinicio, verificación de persistencia, DROP de tabla de prueba, restauración del dump y comprobación del registro. Esa prueba no se ejecutó localmente por falta de Linux/Docker; no se afirma restauración validada en producción.
+La prueba `MariaDbIntegrationTest` ejecutó esta secuencia con MariaDB real en
+[Actions de 6911107](EVIDENCIAS-LINUX-2026-10-26.md): inicialización, INSERT,
+dump, parada y nuevo gestor, verificación de persistencia, DROP de tabla,
+restauración del dump, comprobación del texto Unicode y nueva lectura tras
+otro reinicio. No se ha probado restaurar en un datadir vacío ni datos reales
+de LuckPerms, y no se afirma restauración validada en producción.
 
 1. Detenga clientes y proxy, conserve íntegro el directorio actual. No restaure encima de producción sin validar. Prepare una copia aislada de la imagen, volumen y plugin con el mismo motor 11.4.13.
 2. Declare las bases/usuarios necesarios. Arranque el gestor para inicializar un datadir vacío y espere READY. Copie el dump por un canal privado, compruebe su procedencia e integridad (mantenga un SHA-256 externo al exportar).

@@ -7,7 +7,7 @@ Consulta realizada el 26 de octubre de 2026. Las versiones se fijan por disponib
 | Velocity API | 4.3.0; POM descargado por HTTPS desde el repositorio oficial y compilación correcta |
 | Java | Toolchain 25; entorno local Zulu 25.0.4.1 |
 | Gradle | 9.1.0, primera versión con soporte completo de Java 25; ZIP oficial y SHA-256 comprobados |
-| MariaDB Server | 11.4.13; manifiesto oficial x86_64 verificado; ejecución nativa pendiente en Linux |
+| MariaDB Server | 11.4.13; manifiesto oficial x86_64 verificado; integración Docker Linux correcta en Actions de 6911107 |
 | Connector/J | 3.5.6; POM Maven Central y resolución de Gradle comprobados |
 | SnakeYAML | 2.5; POM Maven Central y resolución comprobados |
 | Commons Compress | 1.28.0; resolución Maven Central y pruebas de extracción |
@@ -33,10 +33,28 @@ La página de descargas de Velocity mostraba 4.1.2-SNAPSHOT en el índice consul
 
 El runtime portable contiene exactamente el SHA-256 `3cebf63914df3154b7cb6d548337eb2be42c773aeb641110446b72e2746cfed7`. Solo descarga esa URL HTTPS, sin redirecciones; no acepta URL/hash editables. No hay catálogo ARM inventado: aarch64 requiere herramientas preinstaladas compatibles. El paquete marcado systemd se ejecuta directamente, sin invocar systemd; sus bibliotecas deben estar presentes igualmente.
 
-## Evidencia local y límites
+## Evidencia local, Linux y límites
 
-El equipo de desarrollo es Windows y no tiene Docker ni WSL instalado. No se han ejecutado MariaDB Linux, Wings o LuckPerms. Sí se ha ejecutado Velocity 4.3.0 build 44 con el JAR: carga de plugin, generación YAML, status/info/help, alias sharedb, reload, rechazo de arranque deshabilitado, diagnóstico de plataforma no compatible y estado FAILED. El cierre del evento del proxy terminó correctamente, sin un motor MariaDB iniciado. Esa prueba no valida apagado del motor SQL ni funcionamiento en producción. CI incluye pruebas Linux con MariaDB real y clientes de otros contenedores; añadir el workflow no significa que haya sido ejecutado.
+El equipo local es Windows y no tiene Docker ni WSL instalado. El build actual
+pasa con 20 pruebas unitarias; el intento local del laboratorio falla por Docker
+ausente y no se contabiliza como validación SQL. También se comprobó localmente
+la carga y comandos de Velocity 4.3.0 build 44 con el motor deshabilitado.
 
-`clean build` completó con 19 pruebas unitarias correctas. `integrationTest` se intentó localmente y falló explícitamente en el requisito Linux; no se contabiliza como prueba SQL superada. La restauración está implementada como prueba de integración real y como procedimiento manual; hasta ejecutar esa prueba no debe describirse como restauración validada. La conectividad entre contenedores y LuckPerms son comprobaciones de aceptación pendientes en un nodo de pruebas.
+[Actions de dfcf60d](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40304776222)
+confirmó el build con verificación SHA-256 activa y la carga real de Velocity
+en Ubuntu 24.04.5/Temurin 25.0.4+1. Su fallo posterior en el laboratorio se
+corrigió sin ejecutar MariaDB como root ni ampliar permisos de sus secretos.
 
-La prueba reproducible `tests/velocity_smoke.py` también terminó correctamente: carga de Velocity oficial con escucha 127.0.0.1 y puerto efímero, registro del plugin, status, help, alias reload y cierre del gestor. El YAML del workflow se analizó con SnakeYAML. Estas comprobaciones no sustituyen ejecutar GitHub Actions ni las pruebas SQL Linux.
+[Actions de 6911107](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40306280695)
+completó además el laboratorio MariaDB real: 20 unitarios y dos tests SQL,
+sin fallos ni omisiones, verificados en los XML descargados. Comprueba
+inicialización, JDBC, privilegios, consultas entre contenedores, persistencia
+tras detener y crear otro gestor, apagado gestionado, dump y restauración
+lógica con lectura posterior a otro reinicio. Consulte los hashes, artefactos
+y fallos corregidos en [las evidencias Linux](EVIDENCIAS-LINUX-2026-10-26.md).
+
+No se han ejecutado Wings ni LuckPerms real. Tampoco se han validado reinicio
+del contenedor, caída forzada, NAT/firewall de producción ni restauración en
+volumen vacío. La [matriz de aceptación](INTEGRACION-REAL.md) mantiene esos
+puntos pendientes. Un laboratorio Docker correcto no equivale a aceptación
+de infraestructura o aprobación de producción.
