@@ -34,6 +34,7 @@ RESULTS = {name: "no ejecutada" for name in (
     "recreacion_contenedor", "restauracion_volumen_vacio", "luckperms_bidireccional",
     "reconexion_luckperms", "logs_sin_secretos")}
 NETWORK_CREATED = False
+ENVIRONMENT = {}
 
 
 def redact(text):
@@ -176,6 +177,11 @@ class Host:
         values = docker("exec", self.name, "bash", "-ec", f"cat {DBROOT}/secrets/*.key").stdout.splitlines()
         require(values and all(re.fullmatch(r"[A-Za-z0-9_-]{43}", x) for x in values), "Credenciales no válidas")
         SECRETS.update(values)
+        forwarding = docker("exec", self.name, "bash", "-ec",
+                            "if test -f /state/velocity/forwarding.secret; then cat /state/velocity/forwarding.secret; fi").stdout.strip()
+        if forwarding:
+            require(len(forwarding) >= 8, "Secreto de forwarding inesperado")
+            SECRETS.add(forwarding)
         permissions = docker("exec", self.name, "bash", "-ec",
                              f"stat -c '%a' {DBROOT}/secrets; stat -c '%a' {DBROOT}/secrets/*.key").stdout.splitlines()
         require(permissions[0] == "700" and all(x == "600" for x in permissions[1:]), "Permisos privados incorrectos")
@@ -267,6 +273,10 @@ def main():
     docker("info")
     download_assets()
     docker("build", "-t", IMAGE, "-f", "tests/Dockerfile", ".", timeout=600)
+    ENVIRONMENT["docker_server"] = docker("version", "--format", "{{.Server.Version}}").stdout.strip()
+    ENVIRONMENT["imagen"] = docker("image", "inspect", "--format", "{{.Id}} {{.Os}} {{.Architecture}}", IMAGE).stdout.strip()
+    ENVIRONMENT["java"] = docker("run", "--rm", "--entrypoint", "java", IMAGE, "-version").stderr.strip()
+    ENVIRONMENT["mariadb"] = docker("run", "--rm", "--entrypoint", "mariadbd", IMAGE, "--no-defaults", "--version").stdout.strip()
     docker("network", "create", "--subnet", "172.30.86.0/24", NETWORK)
     NETWORK_CREATED = True
     begin("recreacion_contenedor")
@@ -390,5 +400,7 @@ finally:
         if status == "en ejecución":
             RESULTS[name] = "fallida"
     (REPORT / "resultado.json").write_text(json.dumps({"commit": os.getenv("GITHUB_SHA", "local"),
-        "pruebas": RESULTS, "error": error, "artefactos": MANIFEST}, ensure_ascii=False, indent=2), encoding="utf-8")
+        "pruebas": RESULTS, "error": error, "artefactos": MANIFEST, "entorno": ENVIRONMENT,
+        "plugin_sha256": hashlib.sha256((ROOT / "build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar").read_bytes()).hexdigest()
+        if (ROOT / "build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar").exists() else None}, ensure_ascii=False, indent=2), encoding="utf-8")
 sys.exit(1 if error else 0)
