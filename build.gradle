@@ -1,0 +1,34 @@
+plugins { id 'java' }
+group = 'com.pbtservers'
+version = '1.0.0-SNAPSHOT'
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+dependencyLocking { lockAllConfigurations() }
+dependencies {
+    compileOnly 'com.velocitypowered:velocity-api:4.3.0'
+    annotationProcessor 'com.velocitypowered:velocity-api:4.3.0'
+    implementation('org.yaml:snakeyaml') { version { strictly '2.5' } }
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.5.6'
+    implementation 'org.apache.commons:commons-compress:1.28.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.17'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+test { useJUnitPlatform { excludeTags 'integration' } }
+tasks.register('integrationTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'integration' }
+    shouldRunAfter test
+}
+// Velocity aísla las dependencias de cada plugin. El JAR incluye el controlador SQL.
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class'
+}
+wrapper { gradleVersion = '9.1.0'; distributionType = Wrapper.DistributionType.BIN }

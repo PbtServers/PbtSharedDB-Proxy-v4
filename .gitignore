@@ -1,0 +1,9 @@
+.gradle/
+.tools/
+build/
+run/
+*.log
+.idea/
+*.iml
+plugins/
+!src/main/resources/config.yml

@@ -1,0 +1,7 @@
+.git
+.tools
+.gradle
+build
+plugins
+**/secrets
+**/*.key

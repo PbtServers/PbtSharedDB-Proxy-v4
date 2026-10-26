@@ -1,0 +1,37 @@
+# PbtSharedDB 1.0.0. Las contraseñas se generan en secrets/, nunca aquí.
+config-version: 1
+enabled: false
+auto-start: false
+# preinstalled: herramientas instaladas en la imagen. portable: distribución bajo runtime/.
+runtime: preinstalled
+binary-path: /usr/sbin/mariadbd
+tools-directory: /usr/bin
+install-db-path: /usr/bin/mariadb-install-db
+# Solo se permite la descarga del artefacto oficial fijado en el código.
+automatic-install: false
+data-directory: data
+host: 127.0.0.1
+port: 3306
+# Para escuchar fuera de loopback se exigen ambas confirmaciones administrativas.
+remote-access: false
+network-isolation-confirmed: false
+# Puerto adicional del panel; debe coincidir con port al habilitar acceso remoto.
+allocated-port: 3306
+startup-timeout: 90
+shutdown-timeout: 60
+initialization:
+  enabled: true
+databases: []
+# Un usuario por aplicación/servidor y host. Host debe ser IPv4 explícita, nunca %.
+# users:
+#   - name: lp_lobby
+#     host: 172.18.0.12
+#     database: luckperms
+users: []
+backups:
+  retention: 7
+  timeout: 600
+  minimum-free-mib: 512
+logs:
+  # Un único archivo por proceso: revisar/rotar mientras el servidor esté detenido.
+  error-file: mariadb.log
