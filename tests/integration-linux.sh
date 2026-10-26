@@ -12,15 +12,20 @@ cleanup() {
   docker rm -f pbtsharedb-integracion >/dev/null 2>&1 || true
   docker network rm pbtsharedb-pruebas >/dev/null 2>&1 || true
   if test -d build/remote-probe; then
-    docker run --rm --user root -v "$PWD/build/remote-probe:/probe" --entrypoint /bin/sh mariadb:11.4.13 -c 'rm -f /probe/client.cnf'
+    # Retirar solo archivos conocidos y el directorio vacío, sin borrado recursivo.
+    # El runner no puede recorrer 0700/mysql, tampoco en la siguiente ejecución.
+    docker run --rm --user root -v "$PWD/build:/results" --entrypoint /bin/sh mariadb:11.4.13 -ec \
+      'rm -f /results/remote-probe/client.cnf /results/remote-probe/ready /results/remote-probe/passed /results/remote-probe/result; rmdir /results/remote-probe'
   fi
 }
 trap cleanup EXIT
 docker build -t pbtsharedb-integracion -f tests/Dockerfile .
 mkdir -p build/integration-gradle
 # No aceptar señales/resultados de una ejecución anterior en un runner reutilizado.
-rm -f build/remote-probe/ready build/remote-probe/passed build/remote-probe/result build/remote-probe/client.cnf
-chmod -R a+rwX build
+# La preparación también debe funcionar con resultados del UID mysql anterior.
+# Eliminar primero la credencial privada, antes de ampliar permisos de resultados.
+docker run --rm --user root -v "$PWD/build:/results" --entrypoint /bin/sh pbtsharedb-integracion -ec \
+  'if test -d /results/remote-probe; then rm -f /results/remote-probe/client.cnf /results/remote-probe/ready /results/remote-probe/passed /results/remote-probe/result; rmdir /results/remote-probe; fi; chmod -R a+rwX /results'
 docker network create --subnet 172.30.85.0/24 pbtsharedb-pruebas
 docker run -d --name pbtsharedb-integracion --network pbtsharedb-pruebas --ip 172.30.85.10 \
   -v "$PWD/build:/work/build" -e PBT_REMOTE_PROBE=1 \

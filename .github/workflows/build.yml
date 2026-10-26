@@ -27,6 +27,10 @@ jobs:
       - name: Inicialización, persistencia, privilegios y restauración sin root
         run: |
           bash tests/integration-linux.sh
+          cp -R build/test-results/integrationTest build/test-results/integrationTest-primera
+          cp -R build/reports/tests/integrationTest build/reports/tests/integrationTest-primera
+      - name: Repetir laboratorio en la misma copia de trabajo
+        run: bash tests/integration-linux.sh
       - name: Retirar contenedores de prueba y credenciales temporales
         if: always()
         run: |

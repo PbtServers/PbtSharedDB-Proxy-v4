@@ -11,4 +11,4 @@ COPY --chown=mysql:mysql gradle/ ./gradle/
 COPY --chown=mysql:mysql src/ ./src/
 USER mysql
 ENTRYPOINT []
-CMD ["bash", "./gradlew", "integrationTest", "--no-daemon", "--console=plain"]
+CMD ["bash", "./gradlew", "integrationTest", "--no-daemon", "--console=plain", "--rerun-tasks"]
