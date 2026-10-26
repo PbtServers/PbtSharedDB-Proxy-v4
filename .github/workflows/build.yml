@@ -1,0 +1,66 @@
+name: Compilar y probar PbtSharedDB
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: bash ./gradlew clean build --no-daemon
+      - name: Cargar plugin y comandos en Velocity oficial
+        run: |
+          curl --fail --location --output build/velocity-4.3.0-44.jar \
+            https://fill-data.papermc.io/v1/objects/85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f/velocity-4.3.0-44.jar
+          echo '85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f  build/velocity-4.3.0-44.jar' | sha256sum --check
+          python3 tests/velocity_smoke.py --velocity build/velocity-4.3.0-44.jar --plugin build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PbtSharedDB-1.0.0-SNAPSHOT
+          path: build/libs/*.jar
+      - name: Preparar imagen Linux con MariaDB real
+        run: docker build -t pbtsharedb-integracion -f tests/Dockerfile .
+      - name: Inicialización, persistencia, privilegios y restauración sin root
+        run: |
+          mkdir -p build/integration-gradle
+          chmod -R a+rwX build .gradle
+          docker network create --subnet 172.30.85.0/24 pbtsharedb-pruebas
+          docker run -d --name pbtsharedb-integracion --network pbtsharedb-pruebas --ip 172.30.85.10 \
+            -v "$PWD:/work" -e PBT_REMOTE_PROBE=1 \
+            -e GRADLE_USER_HOME=/work/build/integration-gradle pbtsharedb-integracion
+          for intento in $(seq 1 120); do
+            if test -f build/remote-probe/ready; then break; fi
+            if test "$(docker inspect -f '{{.State.Running}}' pbtsharedb-integracion)" != true; then
+              docker logs pbtsharedb-integracion
+              exit 1
+            fi
+            sleep 1
+          done
+          test -f build/remote-probe/ready
+          docker run --rm --network pbtsharedb-pruebas --ip 172.30.85.11 --user mysql \
+            -v "$PWD/build/remote-probe:/probe" --entrypoint /bin/sh mariadb:11.4.13 -ec \
+            'mariadb --defaults-file=/probe/client.cnf --protocol=tcp --connect-timeout=5 -e "SELECT texto FROM dato WHERE id=1" > /probe/result; if mariadb --defaults-file=/probe/client.cnf --protocol=tcp --connect-timeout=5 --user=root -e "SELECT 1"; then exit 1; fi'
+          docker run --rm --network pbtsharedb-pruebas --ip 172.30.85.12 --user mysql \
+            -v "$PWD/build/remote-probe:/probe" --entrypoint /bin/sh mariadb:11.4.13 -ec \
+            'if mariadb --defaults-file=/probe/client.cnf --protocol=tcp --connect-timeout=5 -e "SELECT 1"; then exit 1; fi; touch /probe/passed'
+          codigo=$(docker wait pbtsharedb-integracion)
+          docker logs pbtsharedb-integracion
+          test "$codigo" = 0
+      - name: Retirar contenedores de prueba y credenciales temporales
+        if: always()
+        run: |
+          docker rm -f pbtsharedb-integracion 2>/dev/null || true
+          docker network rm pbtsharedb-pruebas 2>/dev/null || true
+          sudo rm -f build/remote-probe/client.cnf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: informes-pruebas
+          path: |
+            build/reports/tests/
+            build/reports/velocity-smoke/*.log
