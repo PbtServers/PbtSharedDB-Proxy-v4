@@ -13,3 +13,11 @@
 - Corrección de la sonda TCP Linux para reinicios con conexiones en TIME_WAIT, conservando el rechazo de listeners activos.
 - Dos tests de integración reales correctos en Actions: inicialización MariaDB, SQL entre contenedores, persistencia y backup/restauración. Véanse las evidencias enlazadas en la matriz de aceptación.
 - Pendiente de aceptación en Wings y LuckPerms; no se afirma aprobación de producción.
+
+## Desarrollo multiproyecto 1.0.0 (sin publicación estable)
+
+- Trasladar el motor y sus pruebas a proxy conservando historial e implementaciones. Common comparte archivos privados, YAML y protocolo; no se distribuye aparte.
+- Añadir Client para Paper 26.1.2 con bootstrap HTTPS/HMAC explícito, pin TLS, protección de repetición y comprobación MariaDB real; salida propia sin contraseñas ni cambios a otros plugins.
+- Generar exactamente dos JAR instalables con dependencias internas y descriptores; adaptar CI y conservar el laboratorio MariaDB/LuckPerms existente.
+- Corregir variable SQL duplicada del cliente y aplicar la exclusión de etiquetas integration únicamente a los unitarios.
+- Añadir auditoría reproducible de nuevos hashes contra repositorios oficiales manteniendo los hashes anteriores.

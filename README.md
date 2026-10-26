@@ -1,8 +1,8 @@
 # PbtSharedDB
 
-Plugin para Velocity API **4.3.0**, Java **25** y MariaDB **11.4.13** nativo dentro del contenedor del proxy. Versión `1.0.0-SNAPSHOT`, ID `pbtsharedb`, paquete `com.pbtservers.sharedb`. Proyecto de PbtServers para compartir almacenamiento SQL entre servidores Minecraft en Pterodactyl, sin Egg MariaDB separado.
+Proyecto Gradle multiproyecto para Java **25**: `proxy` (Velocity 4.x/API 4.3.0 y MariaDB **11.4.13**), `client` (Paper **26.1.2**, API 26.1) y `common` (biblioteca interna compartida, sin distribución independiente). Los archivos de versión `1.0.0` son candidatos de desarrollo; no se ha publicado una versión estable ni se ha validado Wings.
 
-Validación previa a RC1: 22 unitarios y dos ejecuciones de tres tests MariaDB reales en Linux. El laboratorio RC añade recreación de Velocity/PbtSharedDB conservando el volumen, restauración sobre otro volumen vacío y LuckPerms oficial Velocity↔Paper, con escritura y propagación verificadas en sus cachés reales. También comprueba reconexión tras reiniciar SQL y recrear el proxy con Paper activo. **Wings, Egg y sesiones de jugadores reales siguen pendientes**; la versión continúa SNAPSHOT. Consulte las [evidencias RC1](docs/EVIDENCIAS-RC1-2026-10-26.md), la [matriz de aceptación](docs/INTEGRACION-REAL.md) y el [procedimiento restante en Pterodactyl](docs/VALIDACION-RC1.md).
+La migración conserva el código y las pruebas anteriores. El build local ejecuta **29 unitarios**; el [CI de la migración](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40316432019) acredita dos ejecuciones de cuatro integraciones reales, seis criterios RC y carga en Velocity/Paper, sin fallos ni omisiones. Consulte las [evidencias multiproyecto](docs/EVIDENCIAS-MULTIPROYECTO-2026-10-26.md) para los commits y el alcance exacto. Las [evidencias anteriores](docs/EVIDENCIAS-RC1-2026-10-26.md) acreditan MariaDB y LuckPerms reales para el commit histórico indicado, no automáticamente esta migración. Consulte la [matriz](docs/INTEGRACION-REAL.md), la [guía de cliente y HTTPS/HMAC](docs/CLIENTE-Y-DESCUBRIMIENTO.md) y el [procedimiento Wings pendiente](docs/VALIDACION-RC1.md).
 
 ## Arquitectura y funciones implementadas
 
@@ -20,12 +20,16 @@ No se usa H2, SQLite, MariaDB4j ni una simulación SQL. Connector/J se usa para 
 ## Instalación
 
 1. Prepare una imagen Linux con Java 25 y las herramientas MariaDB 11.4.13 indicadas en [PTERODACTYL.md](docs/PTERODACTYL.md). Velocity debe ejecutarse sin root. También puede usar la distribución portable fijada, si la imagen x86_64 glibc contiene sus bibliotecas necesarias.
-2. Compile con `./gradlew clean build` (`./gradlew.bat clean build` en Windows) o descargue el artefacto de una ejecución correcta de Actions. Copie `build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar` a plugins/ de un proxy compatible con API 4.3.0.
+2. Compile con `./gradlew clean build` (`./gradlew.bat clean build` en Windows) o descargue el artefacto de una ejecución correcta de Actions. Copie `build/distributions/PbtSharedDB-Proxy-1.0.0.jar` a plugins/ de un proxy compatible con API 4.3.0.
 3. Arranque para generar config.yml. Por defecto `enabled: false`, `auto-start: false`, host local y sin usuarios/bases. Configure y valide en un entorno de pruebas antes de activar.
 4. Declare bases y cuentas, active enabled y arranque con `pbtsharedb start`. Para inicio con el proxy active auto-start. Solo aprovisione clientes cuando status muestre READY.
 5. Para backends de otros contenedores, prepare primero asignación TCP adicional, dirección privada alcanzable y aislamiento de red/firewall. Configure los controles remotos explícitos y compruebe aceptación/rechazo desde los orígenes correspondientes.
 
 No use `127.0.0.1` como host SQL de los backends. No exponga el puerto SQL a Internet. El plugin no modifica puertos, redes Docker, Egg ni Panel. Al apagar Velocity también se detiene MariaDB y todos los clientes pierden acceso. No ofrece alta disponibilidad.
+
+## Cliente Paper y dos artefactos
+
+Instale `build/distributions/PbtSharedDB-Client-1.0.0.jar` únicamente en Paper 26.1.2. Common se incorpora dentro de ambos plugins; no se instala por separado. El cliente parte deshabilitado y necesita URL HTTPS explícita, huella del certificado y token privado por backend. No escanea redes ni exporta contraseñas. `pbtsharedbclient discover` genera un archivo propio para configuración manual, tras verificar MariaDB. La autenticación SQL requiere una clave de aplicación aprovisionada manualmente. Consulte [la guía completa](docs/CLIENTE-Y-DESCUBRIMIENTO.md).
 
 ## Comandos
 
@@ -46,7 +50,7 @@ Las operaciones se serializan y se rechaza otro comando operativo mientras hay u
 
 ## Seguridad y límites
 
-Directorios 0700, secretos 0600 y contraseñas aleatorias de 256 bits. Las cuentas de aplicación reciben permisos sobre su base; no administración global. Root queda restringido a autenticación Unix local. Escuchar en 0.0.0.0 no autoriza una red: se exige configuración externa y cuentas por host. No se configura TLS en esta versión; use solo una red privada confiable y aislada. Los plugins del mismo UID comparten confianza y pueden leer los archivos del contenedor.
+Directorios 0700, secretos 0600 y contraseñas aleatorias de 256 bits. Las cuentas de aplicación reciben permisos sobre su base; no administración global. Root queda restringido a autenticación Unix local. Escuchar en 0.0.0.0 no autoriza una red: se exige configuración externa y cuentas por host. El descubrimiento exige HTTPS/HMAC y certificado fijado. No se configura TLS para las sesiones SQL en esta versión; use solo una red privada confiable y aislada. Los plugins del mismo UID comparten confianza y pueden leer los archivos del contenedor.
 
 Requiere memoria/CPU/PID suficientes además de Java, ejecución nativa permitida y bibliotecas compatibles. No puede resolver un montaje noexec, seccomp restrictivo, un OOM ni una parada forzada de Docker. No hay adopción de datadir existente, actualización automática de motor, restauración automática, catálogo portable ARM/musl, hosts SQL DNS/CIDR/IPv6, rotación automática de logs o planificación de backups. El orden de arranque con LuckPerms en el proxy necesita una prueba de reconexión en la versión instalada.
 
@@ -62,4 +66,4 @@ Requiere memoria/CPU/PID suficientes además de Java, ejecución nativa permitid
 - [Versiones verificadas, fuentes oficiales y límites de validación](docs/FUENTES-Y-VALIDACION.md).
 - [Historial](CHANGELOG.md). Se conserva el [README original de planificación](docs/README-ORIGINAL.md) y la licencia existente.
 
-`build` ejecuta los unitarios. `integrationTest` exige Linux/MariaDB real y verifica inicialización, persistencia, privilegios, copia y restauración. GitHub Actions compila, publica el JAR como artefacto y prepara la integración en Docker; su resultado debe revisarse cuando se ejecute. Compartir economía o inventarios requiere plugins con soporte de datos compartidos propio; compartir SQL/LuckPerms no lo implementa por sí solo.
+`build` ejecuta los unitarios. `integrationTest` exige Linux/MariaDB real y verifica inicialización, persistencia, privilegios, copia y restauración. GitHub Actions compila, publica ambos JAR como artefactos y ejecuta la integración en Docker; su resultado debe revisarse cuando se ejecute. Compartir economía o inventarios requiere plugins con soporte de datos compartidos propio; compartir SQL/LuckPerms no lo implementa por sí solo.

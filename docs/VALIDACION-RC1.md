@@ -1,6 +1,6 @@
 # Procedimiento previo a v1.0.0-RC1
 
-La versión continúa en SNAPSHOT. Este documento describe pruebas de laboratorio;
+Los artefactos 1.0.0 continúan siendo candidatos de desarrollo, sin release estable. Este documento describe pruebas de laboratorio;
 los resultados se registran por commit en la matriz de aceptación. Docker no
 acredita por sí mismo el contrato de ejecución de Wings.
 
@@ -146,3 +146,11 @@ lpv user UUID permission check pbt.rc1.wings
 No use reload/networksync para ocultar un fallo de propagación automática.
 Al terminar, retire al usuario del grupo y elimine el grupo de prueba. Guarde
 solo la salida saneada y el UUID ficticio, sin dumps ni configuración privada.
+
+## Ampliación obligatoria para el cliente Paper 26.1
+
+1. Instale el JAR Client probado en un backend Paper 26.1.2 con Java 25. Registre versión, hash, imagen, Egg, asignaciones y montaje persistente.
+2. Reserve una asignación TCP HTTPS distinta de SQL en el proxy. Confirme firewall privado de ambos puertos y el origen real de cada backend. Configure certificado con SAN del bootstrap, pin y token privado según [la guía](CLIENTE-Y-DESCUBRIMIENTO.md). No imprima ni adjunte claves.
+3. Ejecute `pbtsharedbclient discover` en consola. Exija archivo propio con metadatos correctos, sin contraseña; con clave SQL de aplicación aprovisionada manualmente exija `authenticated-select-1`. Configure los otros plugins manualmente y compruebe una lectura/escritura real.
+4. Cambie temporalmente token, huella y contraseña SQL de aplicación por valores de prueba incorrectos, cada uno por separado; exija rechazo, archivo anterior intacto y ningún secreto en logs. Restaure los archivos privados correctos después de cada caso. Compruebe también rechazo con el proxy detenido y desde un contenedor no autorizado.
+5. Detenga, reinicie y recree ambos contenedores mediante el procedimiento soportado de Wings conservando sus montajes. Repita descubrimiento y SELECT 1; compruebe datos y permisos LuckPerms según el procedimiento anterior. Registre fecha, versiones y salidas saneadas. Esta acta sigue pendiente hasta ejecutarse en un nodo real.

@@ -58,3 +58,10 @@ del contenedor, caída forzada, NAT/firewall de producción ni restauración en
 volumen vacío. La [matriz de aceptación](INTEGRACION-REAL.md) mantiene esos
 puntos pendientes. Un laboratorio Docker correcto no equivale a aceptación
 de infraestructura o aprobación de producción.
+
+## Fuentes del cliente multiproyecto
+
+- API Paper fijada: `io.papermc.paper:paper-api:26.1.2.build.74-stable`, desde [Maven oficial PaperMC](https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/26.1.2.build.74-stable/).
+- Servidor para carga real: [Paper 26.1.2 build 74, API oficial Fill](https://fill.papermc.io/v3/projects/paper/versions/26.1.2/builds/74), SHA-256 `1d70b1dab9cf4a6de615209a536f3a45a2186240253c428213ce2188ab95e5f7`, fijado en `tests/rc-artifacts.json`.
+- La auditoría `tests/verify_dependency_additions.py` descarga cada artefacto nuevo de su repositorio oficial y compara su SHA-256, sin aceptar cambios en los hashes anteriores. El build normal sigue usando verificación estricta y locks por módulo.
+- La prueba LuckPerms existente conserva Paper 1.21.8 y LuckPerms 5.5.88 oficiales. La carga del cliente en Paper 26.1.2 es un escenario separado; no demuestra LuckPerms sobre esa versión ni Wings.

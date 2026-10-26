@@ -61,7 +61,7 @@ Compruebe también rechazo desde un contenedor no autorizado y desde Internet. N
 
 ## Instalación del plugin
 
-Copie el JAR de build/libs a plugins/ del proxy Java 25 compatible con API 4.3.0. Arranque una vez para generar YAML, detenga, configure y arranque. El primer arranque inicializa solo un datadir vacío, sin cuentas remotas root ni base test. Revise `status` y los registros privados. Solo READY significa consulta autenticada completada. Configure los clientes después de aprovisionar sus credenciales.
+Copie `build/distributions/PbtSharedDB-Proxy-1.0.0.jar` a plugins/ del proxy Java 25 compatible con API 4.3.0. Arranque una vez para generar YAML, detenga, configure y arranque. El primer arranque inicializa solo un datadir vacío, sin cuentas remotas root ni base test. Revise `status` y los registros privados. Solo READY significa consulta autenticada completada. Configure los clientes después de aprovisionar sus credenciales.
 
 En el primer despliegue aprovisione MariaDB para obtener las claves antes de
 configurar LuckPerms. PbtSharedDB usa prioridad de evento anterior a FIRST para
@@ -82,3 +82,7 @@ Si la inicialización falla y quedan archivos sin marca `.pbtsharedb-owned`, el 
 ## Aceptación antes de producción
 
 Compruebe en un nodo de pruebas: carga real del JAR sin errores; READY; creación y lectura de datos; persistencia tras reinicio; conexión desde otro contenedor permitido; rechazo remoto root/no autorizado; LuckPerms en los cuatro servidores; copia/restauración; parada limpia antes del timeout de Wings. Estas comprobaciones de infraestructura no se han ejecutado en el equipo Windows de desarrollo.
+
+## Cliente y puerto HTTPS adicional
+
+Para Paper 26.1.2 instale `PbtSharedDB-Client-1.0.0.jar` en el backend. Siga [cliente y descubrimiento](CLIENTE-Y-DESCUBRIMIENTO.md) para reservar otro puerto TCP HTTPS distinto del SQL, aprovisionar certificado/SAN, huella y token por backend. Verifique desde el contenedor real la URL explícita y el host SQL anunciado; el plugin no escanea ni cambia redes o asignaciones. La aceptación de Docker no valida Wings: repita el [procedimiento de nodo](VALIDACION-RC1.md), incluido rechazo de tokens/pines erróneos y persistencia de ambos directorios de plugins.

@@ -1,5 +1,24 @@
 # Validación de integración de v1.0.0
 
+## Migración multiproyecto (revisión actual)
+
+Las secciones posteriores conservan resultados históricos de los commits indicados. No acreditan automáticamente el cliente nuevo.
+
+| Criterio nuevo | Evidencia actual | Estado |
+|---|---|---|
+| Compilación proxy/client/common, 29 unitarios | Build Windows y Actions 40315948796, XML sin fallos ni omisiones | Superada localmente y en CI |
+| Exactamente dos JAR, comunes/SQL/YAML y descriptores internos | Tarea distributions y ZIP de ambos JAR inspeccionado en CI | Superada localmente y en CI |
+| Nuevos SHA-256 y anteriores intactos | Auditoría local y Actions 40315948796: 123 nuevos, 133 anteriores | Superada localmente y en CI |
+| MariaDB Linux y HTTPS/HMAC real, dos ejecuciones | Actions 40315948796: XML descargados, 2 × (3 proxy + 1 cliente), sin fallos ni omisiones | Superada en CI |
+| Carga Client en Paper 26.1.2 y Proxy en Velocity | Actions 40316432019: carga y SELECT 1 reales desde otro contenedor | Superada en CI |
+| Persistencia, backup/restauración y LuckPerms de la migración | Actions 40316432019: seis criterios RC y logs inspeccionados | Superada en CI, sin jugadores |
+| Nodo Wings, Egg, dos puertos, red y persistencia | Sin nodo real disponible | Pendiente, no validada |
+
+CI final: [Actions 40316432019](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40316432019), commit `1de7a21`, ambos jobs correctos y artefactos descargados/inspeccionados. [Evidencias y hashes](EVIDENCIAS-MULTIPROYECTO-2026-10-26.md). Guía: [cliente y descubrimiento](CLIENTE-Y-DESCUBRIMIENTO.md).
+
+
+## Evidencias históricas anteriores a la migración
+
 Actualización RC1: [Actions 40311287584](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40311287584)
 en `c7ba348` tiene ambos jobs correctos: 22 unitarios, dos ejecuciones de tres
 tests MariaDB y cinco criterios del laboratorio RC1. Artefactos descargados,
@@ -58,16 +77,16 @@ gestor, credenciales estables y persistencia usando una nueva instancia Java.
 Después del dump elimina la tabla, restaura con el cliente oficial, comprueba
 el texto Unicode y vuelve a detener/arrancar antes de leerlo otra vez.
 Esto no prueba reinicio del contenedor, caída forzada ni restauración en un
-volumen vacío. Informes: `build/reports/tests/integrationTest/`.
+volumen vacío. Informes: `build/proxy/reports/tests/integrationTest/` y `build/client/reports/tests/integrationTest/`.
 Esos son los límites del laboratorio JUnit anterior: el job `rc1` añade
 recreación ordenada del contenedor y restauración en un volumen vacío usando
 Velocity/PbtSharedDB reales. Sigue sin probar caída forzada ni Wings.
 CI repite el laboratorio en la misma copia de trabajo con `--rerun-tasks` y
 conserva además los XML/HTML de la primera ejecución con sufijo `-primera`.
 
-## Pruebas realizadas en CI
+## Pruebas históricas realizadas en CI
 
-Las evidencias históricas anteriores se conservan. La ejecución actual
+Las evidencias históricas anteriores se conservan. La ejecución histórica
 40311287584 vuelve a comprobar el laboratorio previo y amplía el alcance.
 
 | Prueba | Evidencia exigida | Estado actual |
@@ -97,6 +116,8 @@ montajes, versiones y hash del JAR. No publique secretos ni dumps.
 |---|---|---|
 | Contrato Egg/imagen/UID/STARTUP | Export Egg, digest, rutas y herramientas ejecutadas bajo el UID real | Pendiente |
 | Asignación SQL y NAT del Panel | Puerto asignado, bind real y origen SQL observado desde cada backend | Pendiente |
+| Asignación HTTPS y bootstrap autenticado | Puerto independiente, certificado/SAN, token privado y SELECT 1 desde Client Paper 26.1.2 | Pendiente |
+| Errores de descubrimiento en Wings | Token/pin/clave SQL incorrectos, proxy parado, archivo anterior intacto y logs sin secretos | Pendiente |
 | Reinicio desde Panel | Registro antes/después, mismo volumen y lectura del dato confirmado | Pendiente |
 | Parada Wings | MariaDB termina antes del timeout, siguiente arranque READY | Pendiente |
 | Recreación con el montaje real del nodo | Sustitución soportada del contenedor conservando el volumen y sus datos | Pendiente |

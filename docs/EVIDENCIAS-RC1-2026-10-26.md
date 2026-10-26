@@ -70,8 +70,6 @@ Tiempos UTC observados en los logs:
 | Nueva caché TRUE Paper tras reiniciar SQL | 10:52:57 |
 | Pool Hikari cerrado antes de MariaDB | 10:52:59, orden de líneas 91 y 93 |
 
-## Alcance y pendientes
-
 ## Ejecución final ampliada
 
 [Actions 40311287584](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40311287584),

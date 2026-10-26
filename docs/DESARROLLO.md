@@ -1,12 +1,14 @@
 # Desarrollo
 
-Java Toolchains 25, Gradle Wrapper 9.1.0 con SHA-256 fijado. No hace falta Gradle global; sí un JDK 25 instalado. Las dependencias directas están fijadas en build.gradle, las transitivas en gradle.lockfile y su contenido en gradle/verification-metadata.xml. La API oficial arrastra velocity-brigadier 1.0.0-SNAPSHOT: su contenido observado queda protegido por hash; si cambia, la verificación debe fallar y requerir revisión, no aceptar silenciosamente otro binario. El JAR incluye Connector/J, SnakeYAML y Commons Compress y sus dependencias transitivas; Velocity API se usa solo para compilar y la aporta el proxy. Velocity genera el descriptor mediante su annotation processor explícito para Java moderno.
+Java Toolchains 25, Gradle Wrapper 9.1.0 con SHA-256 fijado. No hace falta Gradle global; sí un JDK 25 instalado. Las dependencias directas están fijadas en build.gradle, las transitivas en los archivos `proxy/gradle.lockfile`, `client/gradle.lockfile` y `common/gradle.lockfile` y su contenido en gradle/verification-metadata.xml. La API oficial arrastra velocity-brigadier 1.0.0-SNAPSHOT: su contenido observado queda protegido por hash; si cambia, la verificación debe fallar y requerir revisión, no aceptar silenciosamente otro binario. El JAR incluye Connector/J, SnakeYAML y Commons Compress y sus dependencias transitivas; Velocity API se usa solo para compilar y la aporta el proxy. Velocity genera el descriptor mediante su annotation processor explícito para Java moderno.
 
 ```sh
 ./gradlew clean build
 ```
 
-En Windows: `./gradlew.bat clean build`. Resultado: `build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar`. Informes: `build/reports/tests/test/index.html`. No incluya runtime, secretos, logs o datos en commits.
+En Windows: `./gradlew.bat clean build`. Resultado: `build/distributions/PbtSharedDB-Proxy-1.0.0.jar`. Informes: `build/{proxy,client,common}/reports/tests/test/index.html`. No incluya runtime, secretos, logs o datos en commits.
+
+También se genera `build/distributions/PbtSharedDB-Client-1.0.0.jar`; solo se distribuyen esos dos archivos. Las API de plataforma son `compileOnly`; SQL/YAML y las clases comunes se empaquetan dentro de los JAR. El artefacto de common es interno. El motor y sus pruebas se han movido a `proxy/src/` conservando implementaciones e historial.
 
 ## Estructura
 
@@ -49,7 +51,7 @@ su propio mariadbd mediante ProcessBuilder. Reconstruya al cambiar fuentes.
 
 GitHub Actions compila, ejecuta unitarios, publica el JAR como artefacto y prepara esta integración Docker, conservando los informes. Además activa PBT_REMOTE_PROBE=1 y conecta un segundo contenedor MariaDB cliente, en una red de pruebas aislada con IP explícita conocida, para consultar el registro de aplicación mediante una cuenta remota sin privilegios globales. Esas IP fijas son solo un fixture de pruebas, nunca una suposición sobre Wings. No publica releases ni despliega en Wings. Las etiquetas base de las imágenes Docker se fijan por versión pero no por digest; para auditoría reproducible registre sus digests en el despliegue.
 
-La carga en Velocity oficial se comprueba con `python tests/velocity_smoke.py --velocity /ruta/velocity-4.3.0-44.jar --plugin build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar`. La prueba exige el JAR de proxy ya descargado/verificado, genera una configuración con escucha loopback y puerto efímero y comprueba carga, status, ayuda, alias/recarga y cierre. El motor SQL permanece deshabilitado. Conserva un archivo .log bajo build/reports/velocity-smoke/; el entorno de trabajo privado queda fuera de los informes para no publicar forwarding.secret ni configuraciones. CI descarga y verifica el build oficial fijado antes de ejecutarla.
+La carga en Velocity oficial se comprueba con `python tests/velocity_smoke.py --velocity /ruta/velocity-4.3.0-44.jar --plugin build/distributions/PbtSharedDB-Proxy-1.0.0.jar`. La prueba exige el JAR de proxy ya descargado/verificado, genera una configuración con escucha loopback y puerto efímero y comprueba carga, status, ayuda, alias/recarga y cierre. El motor SQL permanece deshabilitado. Conserva un archivo .log bajo build/reports/velocity-smoke/; el entorno de trabajo privado queda fuera de los informes para no publicar forwarding.secret ni configuraciones. CI descarga y verifica el build oficial fijado antes de ejecutarla.
 
 MariaDB Linux y las consultas desde otros contenedores han pasado en Actions,
 incluyendo persistencia, parada del proceso gestionado y backup/restauración
@@ -70,3 +72,7 @@ de los datos comparados, sin volúmenes, claves ni dumps.
 Mensajes administrativos, documentación y comentarios en español. Mantenga dependencias fijadas y verificadas en fuentes oficiales; evalúe seguridad del runtime antes de añadir otro artefacto o arquitectura. No use MariaDB4j: este proyecto gestiona directamente el servidor oficial y evita su abstracción y distribución de binarios adicionales. No se usan H2/SQLite como sustitutos.
 
 Antes de cambiar el motor, pruebe restauración/migración y actualice hash, catálogo y documentación. No adopte un datadir ajeno ni cambie una política de fallo seguro para ocultar un error. No registre SQL sensible o causas JDBC completas. Adjunte resultados reales y declare expresamente qué plataformas no ha probado.
+
+## Auditoría de dependencias del cliente
+
+`python3 tests/verify_dependency_additions.py` compara los metadatos con `fd658f0`, exige que los 133 artefactos previos mantengan exactamente sus hashes y contrasta los 123 nuevos con Maven Central, PaperMC y Mojang. El informe queda en `build/reports/dependency-audit.json`. No sustituye la verificación estricta de Gradle ni modifica metadatos. No se desactiva ningún control. Los unitarios se excluyen de `integrationTest` mediante etiquetas; la exclusión de integración se aplica únicamente a la tarea `test`.
