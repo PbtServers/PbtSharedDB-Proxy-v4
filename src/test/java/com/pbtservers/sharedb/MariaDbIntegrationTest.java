@@ -48,12 +48,20 @@ class MariaDbIntegrationTest {
         assertThrows(SQLException.class,()->new org.mariadb.jdbc.Driver().connect("jdbc:mariadb://127.0.0.1:13316/",rootProps));
         Path backup=new BackupManager(root).backup(process,config);assertTrue(Files.size(backup)>0);
         String dump=Files.readString(backup);assertFalse(dump.contains(Files.readString(root.resolve("secrets/health.key")).trim()));
-        process.stop();process.start(config);
+        String credential=Files.readString(root.resolve("secrets/lp_test-127.0.0.1.key"));
+        String ownership=Files.readString(config.data().resolve(".pbtsharedb-owned"));
+        process.stop();
+        // Nueva instancia: no depender de estado Java conservado por restart().
+        process=new ProcessManager(root);process.start(config);
+        assertEquals(credential,Files.readString(root.resolve("secrets/lp_test-127.0.0.1.key")));
+        assertEquals(ownership,Files.readString(config.data().resolve(".pbtsharedb-owned")));
         try (Connection c=connect();Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT texto FROM dato WHERE id=1")) { assertTrue(r.next());assertEquals("persistente ñ",r.getString(1)); }
         try (Connection c=connect();Statement s=c.createStatement()) { s.execute("DROP TABLE dato"); }
         // Restauración lógica real: el dump solo incluye las bases de aplicación.
         process.database().sql(Files.readString(backup),60);
-        try (Connection c=connect();Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT COUNT(*) FROM dato")) { assertTrue(r.next());assertEquals(1,r.getInt(1)); }
+        try (Connection c=connect();Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT texto FROM dato WHERE id=1")) { assertTrue(r.next());assertEquals("persistente ñ",r.getString(1));assertFalse(r.next()); }
+        process.stop();process=new ProcessManager(root);process.start(config);
+        try (Connection c=connect();Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT texto FROM dato WHERE id=1")) { assertTrue(r.next());assertEquals("persistente ñ",r.getString(1)); }
         ProcessManager duplicate=new ProcessManager(root);
         assertThrows(Exception.class,()->duplicate.start(config));assertEquals(ProcessManager.State.READY,process.state());
         // El intento competidor no puede detener el proceso propietario.
