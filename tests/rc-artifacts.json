@@ -1,0 +1,22 @@
+{
+  "velocity": {
+    "version": "4.3.0-44",
+    "url": "https://fill-data.papermc.io/v1/objects/85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f/velocity-4.3.0-44.jar",
+    "sha256": "85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f"
+  },
+  "paper": {
+    "version": "1.21.8-60",
+    "url": "https://fill-data.papermc.io/v1/objects/8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e/paper-1.21.8-60.jar",
+    "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+  },
+  "lp_velocity": {
+    "version": "5.5.88-build1675",
+    "url": "https://download.luckperms.net/1675/velocity/LuckPerms-Velocity-5.5.88.jar",
+    "sha256": "bdb078e0f308466c45f7e6429e48a2b61c80d07170747e1276a164dd914e9ca8"
+  },
+  "lp_bukkit": {
+    "version": "5.5.88-build1675",
+    "url": "https://download.luckperms.net/1675/bukkit/loader/LuckPerms-Bukkit-5.5.88.jar",
+    "sha256": "af18d92f0b8d85b73835546e3376630dea62417291ed8571930e6875436a64be"
+  }
+}

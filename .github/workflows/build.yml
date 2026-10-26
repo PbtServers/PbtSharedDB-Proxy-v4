@@ -46,3 +46,21 @@ jobs:
             build/test-results/
             build/reports/dependency-verification/
             build/reports/velocity-smoke/*.log
+  rc1:
+    name: Volúmenes persistentes, restauración limpia y LuckPerms real
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PbtSharedDB-1.0.0-SNAPSHOT
+          path: build/libs
+      - name: Recrear anfitrión, restaurar volumen vacío y propagar permisos reales
+        run: python3 tests/rc_integration.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aceptacion-rc1
+          path: build/reports/rc/
