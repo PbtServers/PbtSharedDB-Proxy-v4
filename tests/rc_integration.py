@@ -394,10 +394,10 @@ INSERT INTO rc_links VALUES(1,2);
     SECRETS.update((token, sql_key))
     volume_exec(fresh, "keytool", "-exportcert", "-alias", "discovery", "-keystore", DBROOT + "/discovery-tls.p12",
                 "-storepass:file", DBROOT + "/discovery-tls-password.key", "-file", "/state/discovery.cer")
-    fingerprint = volume_exec(fresh, "sha256sum", "/state/discovery.cer").stdout.split()[0]
+    certificate_fingerprint = volume_exec(fresh, "sha256sum", "/state/discovery.cer").stdout.split()[0]
     client_root = "/state/paper/plugins/PbtSharedDBClient"
     client_config = (f"config-version: 1\nenabled: true\nbootstrap-url: https://172.30.86.10:3307/v1/discovery\nclient-id: lobby\n"
-                     f"certificate-sha256: {fingerprint}\ntoken-file: discovery-token.key\nsql-password-file: sql-password.key\n")
+                     f"certificate-sha256: {certificate_fingerprint}\ntoken-file: discovery-token.key\nsql-password-file: sql-password.key\n")
     write(client_volume, client_root + "/config.yml", client_config)
     write(client_volume, client_root + "/discovery-token.key", token)
     write(client_volume, client_root + "/sql-password.key", sql_key)
@@ -414,7 +414,7 @@ INSERT INTO rc_links VALUES(1,2);
     client_host.command("pbtsharedbclient discover", "No se generan datos nuevos")
     require(docker("exec", client_host.name, "cat", client_root + "/connections/lobby.yml").stdout == output, "Un token inválido modificó el archivo")
     write(client_volume, client_root + "/discovery-token.key", token)
-    write(client_volume, client_root + "/config.yml", client_config.replace(fingerprint, "0" * 64))
+    write(client_volume, client_root + "/config.yml", client_config.replace(certificate_fingerprint, "0" * 64))
     client_host.command("pbtsharedbclient discover", "No se generan datos nuevos")
     require(docker("exec", client_host.name, "cat", client_root + "/connections/lobby.yml").stdout == output, "Un certificado inválido modificó el archivo")
     require(docker("exec", client_host.name, "cat", "/state/paper/plugins/Ajeno/config.yml").stdout == "no modificar\n", "El cliente modificó configuración ajena")
