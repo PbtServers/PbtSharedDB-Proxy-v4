@@ -26,14 +26,15 @@ docker run -d --name pbtsharedb-integracion --network pbtsharedb-pruebas --ip 17
   -v "$PWD/build:/work/build" -e PBT_REMOTE_PROBE=1 \
   -e GRADLE_USER_HOME=/work/build/integration-gradle pbtsharedb-integracion
 for intento in $(seq 1 120); do
-  if test -f build/remote-probe/ready; then break; fi
+  # La coordinación es 0700/mysql: el UID del runner no debe leer credenciales.
+  if docker exec pbtsharedb-integracion test -f /work/build/remote-probe/ready 2>/dev/null; then break; fi
   if test "$(docker inspect -f '{{.State.Running}}' pbtsharedb-integracion)" != true; then
     docker logs pbtsharedb-integracion
     exit 1
   fi
   sleep 1
 done
-test -f build/remote-probe/ready
+docker exec pbtsharedb-integracion test -f /work/build/remote-probe/ready
 docker run --rm --network pbtsharedb-pruebas --ip 172.30.85.11 --user mysql \
   -v "$PWD/build/remote-probe:/probe" --entrypoint /bin/sh mariadb:11.4.13 -ec \
   'mariadb --defaults-file=/probe/client.cnf --protocol=tcp --connect-timeout=5 -e "SELECT texto FROM dato WHERE id=1" > /probe/result; if mariadb --defaults-file=/probe/client.cnf --protocol=tcp --connect-timeout=5 --user=root -e "SELECT 1"; then exit 1; fi'
