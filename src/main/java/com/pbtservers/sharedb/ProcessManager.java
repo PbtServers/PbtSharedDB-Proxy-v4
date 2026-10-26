@@ -76,7 +76,10 @@ public final class ProcessManager implements AutoCloseable {
         }
     }
     static void checkPort(String host,int port) throws IOException {
-        try (ServerSocket probe=new ServerSocket()) { probe.setReuseAddress(false);probe.bind(new InetSocketAddress(host,port)); }
+        // Linux conserva conexiones cerradas en TIME_WAIT. MariaDB reutiliza esas
+        // direcciones; la sonda debe hacer lo mismo para permitir un reinicio limpio.
+        // SO_REUSEADDR no es SO_REUSEPORT: un listener activo sigue siendo rechazado.
+        try (ServerSocket probe=new ServerSocket()) { probe.setReuseAddress(System.getProperty("os.name").equals("Linux"));probe.bind(new InetSocketAddress(host,port)); }
         catch (IOException e) { throw new IOException("Puerto SQL ocupado o no disponible: "+port,e); }
     }
     private void launch(boolean tcp) throws Exception {

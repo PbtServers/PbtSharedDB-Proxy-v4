@@ -19,6 +19,13 @@ class ProcessTest {
             assertThrows(IOException.class,()->ProcessManager.checkPort("127.0.0.1",socket.getLocalPort()));
         }
     }
+    @Test void occupiedReusablePortIsRejectedIncludingWildcard() throws Exception {
+        try (ServerSocket socket=new ServerSocket()) {
+            socket.setReuseAddress(true);socket.bind(new InetSocketAddress("127.0.0.1",0));
+            assertThrows(IOException.class,()->ProcessManager.checkPort("127.0.0.1",socket.getLocalPort()));
+            assertThrows(IOException.class,()->ProcessManager.checkPort("0.0.0.0",socket.getLocalPort()));
+        }
+    }
     @Test void validatesNativeExitCode() throws Exception {
         Path java=Path.of(System.getProperty("java.home"),"bin",System.getProperty("os.name").startsWith("Windows")?"java.exe":"java");
         assertThrows(IOException.class,()->NativeCommand.run(List.of(java.toString(),"--opcion-inexistente"),null,root.resolve("out"),root.resolve("err"),10));
