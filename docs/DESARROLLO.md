@@ -25,6 +25,11 @@ Estados: STOPPED → STARTING → READY → STOPPING → STOPPED; cualquier fall
 
 ## Pruebas
 
+El laboratorio compartido por CI y ejecución local está en
+`tests/integration-linux.sh`; consulte [integración real](INTEGRACION-REAL.md)
+para ejecutarlo con las consultas entre contenedores y distinguir los
+resultados unitarios de la aceptación pendiente en Wings/LuckPerms.
+
 `test` cubre configuración segura, esquema futuro preservado, duplicados, nombres SQL, hosts autorizados, credenciales estables, rutas, extracción de archivos maliciosos, puerto ocupado, códigos reales de salida nativa y estados sin motor. No se simulan conexiones SQL para afirmar funcionamiento de MariaDB.
 
 `integrationTest` está separado, exige Linux y herramientas MariaDB 11.4.13 reales, y falla si faltan; no se omite silenciosamente. Comprueba inicialización sin root, SELECT 1 TCP, permisos mínimos, rechazo de root TCP, persistencia, copia lógica, restauración y exclusión de otra instancia. Puerto local de prueba 13316; no lo ocupe. Ejecución con Docker en Linux:

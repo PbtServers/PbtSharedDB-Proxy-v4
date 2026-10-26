@@ -52,6 +52,7 @@ Requiere memoria/CPU/PID suficientes además de Java, ejecución nativa permitid
 
 ## Documentación y pruebas
 
+- [Laboratorio Linux y matriz de aceptación real de Wings/LuckPerms](docs/INTEGRACION-REAL.md).
 - [Instalación, red, puertos y recuperación en Pterodactyl](docs/PTERODACTYL.md).
 - [LuckPerms en Velocity, Lobby, Survival y Creative](docs/LUCKPERMS.md).
 - [Todas las opciones de configuración](docs/CONFIGURACION.md).
