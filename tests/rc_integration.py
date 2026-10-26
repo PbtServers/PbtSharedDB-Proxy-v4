@@ -65,6 +65,10 @@ def passed(name):
     print("RC OK: " + name, flush=True)
 
 
+def begin(name):
+    RESULTS[name] = "en ejecución"
+
+
 def download_assets():
     for name, artifact in MANIFEST.items():
         target = ASSETS / (name + ".jar")
@@ -106,6 +110,8 @@ def prepare_proxy(volume):
         config = archive.read("default-velocity.toml").decode()
     config, count = re.subn(r'(?m)^bind\s*=\s*"[^"]+"', 'bind = "127.0.0.1:0"', config)
     require(count == 1, "No se pudo aislar Velocity")
+    config, count = re.subn(r'(?m)^lobby\s*=\s*"[^"]+"', 'lobby = "172.30.86.11:25565"', config)
+    require(count == 1, "No se pudo configurar el backend Paper del laboratorio")
     write(volume, "/state/velocity/velocity.toml", config)
     config = (ROOT / "src/main/resources/config.yml").read_text(encoding="utf-8")
     for before, after in (("enabled: false", "enabled: true"), ("auto-start: false", "auto-start: true"),
@@ -243,6 +249,7 @@ def compile_probe(volume, paper=False):
 
 def security_reports():
     require(HOSTS and SECRETS, "No hay un arranque y credenciales para comprobar los logs")
+    begin("logs_sin_secretos")
     leaked = False
     for host in HOSTS:
         output = "".join(host.lines)
@@ -262,6 +269,7 @@ def main():
     docker("build", "-t", IMAGE, "-f", "tests/Dockerfile", ".", timeout=600)
     docker("network", "create", "--subnet", "172.30.86.0/24", NETWORK)
     NETWORK_CREATED = True
+    begin("recreacion_contenedor")
     original = new_volume("original")
     prepare_proxy(original)
     first = Host("original", original)
@@ -282,6 +290,7 @@ INSERT INTO rc_links VALUES(1,2);
     require(docker("exec", second.name, "cat", DBROOT + "/secrets/lp_proxy-127.0.0.1.key").stdout == credential,
             "Credencial modificada tras recrear")
     passed("recreacion_contenedor")
+    begin("restauracion_volumen_vacio")
     second.command("pbtsharedb backup", "Copia consistente creada")
     backup_path = docker("exec", second.name, "bash", "-ec", f"ls {DBROOT}/backups/*.sql").stdout.strip()
     dump = docker("exec", second.name, "cat", backup_path).stdout
@@ -301,6 +310,7 @@ INSERT INTO rc_links VALUES(1,2);
     live.start()
     require(fingerprint(live) == expected, "Restauración no persiste tras recrear otro contenedor")
     passed("restauracion_volumen_vacio")
+    begin("luckperms_bidireccional")
     proxy_password = new_credential.strip()
     backend_password = docker("exec", live.name, "cat", DBROOT + "/secrets/lp_backend-172.30.86.11.key").stdout.strip()
     live.stop()
@@ -309,7 +319,9 @@ INSERT INTO rc_links VALUES(1,2);
     compile_probe(fresh)
     proxy = Host("luckperms-proxy", fresh)
     proxy.start()
-    proxy.expect("RC_CACHE velocity")
+    proxy.expect("RC_CACHE velocity UNDEFINED")
+    require("Failed to init storage" not in "".join(proxy.lines) and "Exception occurred whilst enabling SQL messaging" not in "".join(proxy.lines),
+            "LuckPerms no inicializó almacenamiento/mensajería")
     backend_volume = new_volume("backend")
     volume_exec(backend_volume, "bash", "-ec", "mkdir -p /state/paper/plugins/LuckPerms; "
                 "cp /assets/paper.jar /state/paper/server.jar; cp /assets/lp_bukkit.jar /state/paper/plugins/LuckPerms.jar")
@@ -323,7 +335,8 @@ INSERT INTO rc_links VALUES(1,2);
     compile_probe(backend_volume, paper=True)
     backend = Host("paper", backend_volume, paper=True)
     backend.start()
-    backend.expect("RC_CACHE paper")
+    backend.expect("RC_CACHE paper UNDEFINED")
+    docker("exec", proxy.name, "bash", "-ec", "timeout 5 bash -c 'exec 3<>/dev/tcp/172.30.86.11/25565'")
     proxy.command("lpv group default permission set pbt.rc1.propagacion true")
     proxy.expect("RC_CACHE velocity TRUE")
     backend.expect("RC_CACHE paper TRUE")
@@ -333,6 +346,7 @@ INSERT INTO rc_links VALUES(1,2);
     proxy.expect("RC_CACHE velocity FALSE", before)
     require("pbt.rc1.propagacion" in proxy.sql("SELECT permission FROM luckperms_group_permissions;"), "LuckPerms no escribió su tabla SQL")
     passed("luckperms_bidireccional")
+    begin("reconexion_luckperms")
     proxy.command("pbtsharedb restart", "MariaDB reiniciado y disponible", timeout=180)
     before = len(backend.lines)
     proxy.command("lpv group default permission set pbt.rc1.propagacion true")
@@ -364,6 +378,9 @@ finally:
         docker("network", "rm", NETWORK, check=False)
     for volume in VOLUMES:
         docker("volume", "rm", volume, check=False)
+    for name, status in RESULTS.items():
+        if status == "en ejecución":
+            RESULTS[name] = "fallida"
     (REPORT / "resultado.json").write_text(json.dumps({"commit": os.getenv("GITHUB_SHA", "local"),
         "pruebas": RESULTS, "error": error, "artefactos": MANIFEST}, ensure_ascii=False, indent=2), encoding="utf-8")
 sys.exit(1 if error else 0)

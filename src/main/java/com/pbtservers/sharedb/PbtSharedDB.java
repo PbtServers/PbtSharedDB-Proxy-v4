@@ -25,7 +25,8 @@ public final class PbtSharedDB {
     @Inject public PbtSharedDB(ProxyServer proxy,Logger logger,@DataDirectory Path directory) {
         this.proxy=proxy;this.logger=logger;this.root=directory.toAbsolutePath().normalize();this.processes=new ProcessManager(root);
     }
-    @Subscribe public EventTask initialize(ProxyInitializeEvent event) {
+    // FIRST equivale a MAX_VALUE-1 en Velocity: LuckPerms debe encontrar SQL listo.
+    @Subscribe(priority=Short.MAX_VALUE) public EventTask initialize(ProxyInitializeEvent event) {
         return EventTask.withContinuation(continuation -> executor.execute(() -> {
             try {
                 configurations=new ConfigurationManager(root);
@@ -38,7 +39,8 @@ public final class PbtSharedDB {
             finally { continuation.resume(); }
         }));
     }
-    @Subscribe public EventTask shutdown(ProxyShutdownEvent event) {
+    // Cerrar SQL después de los consumidores que escuchan en LAST (p. ej. LuckPerms).
+    @Subscribe(priority=Short.MIN_VALUE) public EventTask shutdown(ProxyShutdownEvent event) {
         closing=true;
         return EventTask.withContinuation(continuation -> executor.execute(() -> {
             try { processes.stop();logger.info("Gestor MariaDB cerrado; no quedan procesos propios activos"); }
