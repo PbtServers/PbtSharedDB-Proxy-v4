@@ -1,0 +1,15 @@
+# Servicio adicional de control. No se exportan contraseñas SQL.
+enabled: false
+bind-host: 127.0.0.1
+port: 3307
+allocated-port: 3307
+network-isolation-confirmed: false
+advertised-sql-host: 127.0.0.1
+keystore: discovery-tls.p12
+keystore-password-file: discovery-tls-password.key
+# Cada entrada referencia exactamente una cuenta existente de config.yml.
+# clients:
+#   - id: lobby
+#     username: lp_lobby
+#     user-host: 172.30.86.11
+clients: []

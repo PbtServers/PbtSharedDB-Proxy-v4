@@ -1,0 +1,22 @@
+dependencies {
+    implementation project(':common')
+    compileOnly 'io.papermc.paper:paper-api:26.1.2.build.74-stable'
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.5.6'
+    testImplementation project(':proxy')
+}
+tasks.named('processTestResources') {
+    from(project(':proxy').file('src/main/resources/config.yml')) { rename { 'proxy-fixture.yml' } }
+}
+tasks.register('integrationTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'integration' }
+    shouldRunAfter test
+}
+jar {
+    dependsOn ':common:jar'
+    archiveFileName = 'PbtSharedDB-Client-1.0.0.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class'
+}

@@ -8,27 +8,33 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
       - run: bash ./gradlew clean build --no-daemon
+      - name: Contrastar nuevos SHA-256 con repositorios oficiales
+        run: python3 tests/verify_dependency_additions.py
       - name: Cargar plugin y comandos en Velocity oficial
         run: |
           curl --fail --location --output build/velocity-4.3.0-44.jar \
             https://fill-data.papermc.io/v1/objects/85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f/velocity-4.3.0-44.jar
           echo '85be73b90f295acd8d5d45a00ad10bac791d4b72b7554172612a89565ebaaa8f  build/velocity-4.3.0-44.jar' | sha256sum --check
-          python3 tests/velocity_smoke.py --velocity build/velocity-4.3.0-44.jar --plugin build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar
+          python3 tests/velocity_smoke.py --velocity build/velocity-4.3.0-44.jar --plugin build/distributions/PbtSharedDB-Proxy-1.0.0.jar
       - uses: actions/upload-artifact@v4
         with:
-          name: PbtSharedDB-1.0.0-SNAPSHOT
-          path: build/libs/*.jar
+          name: PbtSharedDB-1.0.0-plugins
+          path: build/distributions/*.jar
       - name: Inicialización, persistencia, privilegios y restauración sin root
         run: |
           bash tests/integration-linux.sh
-          cp -R build/test-results/integrationTest build/test-results/integrationTest-primera
-          cp -R build/reports/tests/integrationTest build/reports/tests/integrationTest-primera
+          cp -R build/proxy/test-results/integrationTest build/proxy/test-results/integrationTest-primera
+          cp -R build/proxy/reports/tests/integrationTest build/proxy/reports/tests/integrationTest-primera
+          cp -R build/client/test-results/integrationTest build/client/test-results/integrationTest-primera
+          cp -R build/client/reports/tests/integrationTest build/client/reports/tests/integrationTest-primera
       - name: Repetir laboratorio en la misma copia de trabajo
         run: bash tests/integration-linux.sh
       - name: Retirar contenedores de prueba y credenciales temporales
@@ -42,12 +48,17 @@ jobs:
         with:
           name: informes-pruebas
           path: |
-            build/reports/tests/
-            build/test-results/
+            build/proxy/reports/tests/
+            build/proxy/test-results/
+            build/client/reports/tests/
+            build/client/test-results/
+            build/common/reports/tests/
+            build/common/test-results/
             build/reports/dependency-verification/
+            build/reports/dependency-audit.json
             build/reports/velocity-smoke/*.log
   rc1:
-    name: Volúmenes persistentes, restauración limpia y LuckPerms real
+    name: Persistencia, LuckPerms real y cliente Paper 26.1 autenticado
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -55,8 +66,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: PbtSharedDB-1.0.0-SNAPSHOT
-          path: build/libs
+          name: PbtSharedDB-1.0.0-plugins
+          path: build/distributions
       - name: Recrear anfitrión, restaurar volumen vacío y propagar permisos reales
         run: python3 tests/rc_integration.py
       - uses: actions/upload-artifact@v4

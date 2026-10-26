@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 import threading
@@ -32,7 +33,7 @@ SECRETS = set()
 HOSTS, VOLUMES = [], []
 RESULTS = {name: "no ejecutada" for name in (
     "recreacion_contenedor", "restauracion_volumen_vacio", "luckperms_bidireccional",
-    "reconexion_luckperms", "logs_sin_secretos")}
+    "reconexion_luckperms", "cliente_paper26_descubrimiento", "logs_sin_secretos")}
 NETWORK_CREATED = False
 ENVIRONMENT = {}
 
@@ -84,7 +85,7 @@ def download_assets():
 
 def volume_exec(volume, *command, data=None, user="mysql", timeout=180):
     return docker("run", "--rm", "--interactive", "--user", user, "--mount", f"type=volume,src={volume},dst=/state",
-                  "-v", f"{ASSETS}:/assets:ro", "-v", f"{ROOT / 'build/libs'}:/plugin:ro",
+                  "-v", f"{ASSETS}:/assets:ro", "-v", f"{ROOT / 'build/distributions'}:/plugin:ro",
                   "-v", f"{ROOT / 'tests/rc-probe'}:/probe-src:ro", "--entrypoint", command[0],
                   IMAGE, *command[1:], data=data, timeout=timeout)
 
@@ -106,7 +107,7 @@ def new_volume(suffix):
 
 def prepare_proxy(volume):
     volume_exec(volume, "bash", "-ec", "mkdir -p /state/velocity/plugins/pbtsharedb; "
-                "cp /assets/velocity.jar /state/velocity/server.jar; cp /plugin/PbtSharedDB-1.0.0-SNAPSHOT.jar /state/velocity/plugins/")
+                "cp /assets/velocity.jar /state/velocity/server.jar; cp /plugin/PbtSharedDB-Proxy-1.0.0.jar /state/velocity/plugins/")
     with zipfile.ZipFile(ASSETS / "velocity.jar") as archive:
         config = archive.read("default-velocity.toml").decode()
     config, count = re.subn(r'(?m)^bind\s*=\s*"[^"]+"', 'bind = "127.0.0.1:0"', config)
@@ -114,29 +115,40 @@ def prepare_proxy(volume):
     config, count = re.subn(r'(?m)^lobby\s*=\s*"[^"]+"', 'lobby = "172.30.86.11:25565"', config)
     require(count == 1, "No se pudo configurar el backend Paper del laboratorio")
     write(volume, "/state/velocity/velocity.toml", config)
-    config = (ROOT / "src/main/resources/config.yml").read_text(encoding="utf-8")
+    config = (ROOT / "proxy/src/main/resources/config.yml").read_text(encoding="utf-8")
     for before, after in (("enabled: false", "enabled: true"), ("auto-start: false", "auto-start: true"),
                           ("host: 127.0.0.1", "host: 0.0.0.0"), ("remote-access: false", "remote-access: true"),
                           ("network-isolation-confirmed: false", "network-isolation-confirmed: true"),
                           ("databases: []", "databases: [luckperms]"),
                           ("\nusers: []", "\nusers:\n  - name: lp_proxy\n    host: 127.0.0.1\n    database: luckperms\n"
-                           "  - name: lp_backend\n    host: 172.30.86.11\n    database: luckperms")):
+                           "  - name: lp_backend\n    host: 172.30.86.11\n    database: luckperms\n"
+                           "  - name: lp_client\n    host: 172.30.86.12\n    database: luckperms")):
         config = config.replace(before, after)
     write(volume, DBROOT + "/config.yml", config)
+    tls_password = secrets.token_urlsafe(32)
+    SECRETS.add(tls_password)
+    write(volume, DBROOT + "/discovery-tls-password.key", tls_password)
+    volume_exec(volume, "keytool", "-genkeypair", "-alias", "discovery", "-keyalg", "RSA", "-keysize", "2048",
+                "-validity", "30", "-dname", "CN=172.30.86.10", "-ext", "SAN=IP:172.30.86.10", "-storetype", "PKCS12",
+                "-keystore", DBROOT + "/discovery-tls.p12", "-storepass:file", DBROOT + "/discovery-tls-password.key")
+    write(volume, DBROOT + "/discovery.yml", "enabled: true\nbind-host: 0.0.0.0\nport: 3307\nallocated-port: 3307\n"
+          "network-isolation-confirmed: true\nadvertised-sql-host: 172.30.86.10\nkeystore: discovery-tls.p12\n"
+          "keystore-password-file: discovery-tls-password.key\nclients:\n  - id: lobby\n    username: lp_client\n    user-host: 172.30.86.12\n")
 
 
 class Host:
-    def __init__(self, suffix, volume, paper=False):
+    def __init__(self, suffix, volume, paper=False, ip=None):
         self.name, self.volume, self.paper = PREFIX + "-" + suffix, volume, paper
         self.lines = []
         self.process = None
         self.removed = False
+        self.ip = ip or ("172.30.86.11" if paper else "172.30.86.10")
         HOSTS.append(self)
 
     def start(self):
         directory = "/state/paper" if self.paper else "/state/velocity"
         command = ["docker", "run", "--name", self.name, "--init", "--interactive", "--stop-timeout", "150",
-                   "--network", NETWORK, "--ip", "172.30.86.11" if self.paper else "172.30.86.10",
+                   "--network", NETWORK, "--ip", self.ip,
                    "--mount", f"type=volume,src={self.volume},dst=/state", "--workdir", directory,
                    "--entrypoint", "java", IMAGE, "-Xms256M", "-Xmx1024M", "-XX:ActiveProcessorCount=2",
                    "-Dterminal.jline=false", "-Dterminal.ansi=false", "-Dfile.encoding=UTF-8", "-jar", "server.jar"]
@@ -174,7 +186,7 @@ class Host:
                       data=statement, check=check).stdout.strip()
 
     def collect_secrets(self):
-        values = docker("exec", self.name, "bash", "-ec", f"cat {DBROOT}/secrets/*.key").stdout.splitlines()
+        values = docker("exec", self.name, "bash", "-ec", f"for key in {DBROOT}/secrets/*.key {DBROOT}/discovery-secrets/*.key; do test ! -f \"$key\" || cat \"$key\"; done").stdout.splitlines()
         require(values and all(re.fullmatch(r"[A-Za-z0-9_-]{43}", x) for x in values), "Credenciales no válidas")
         SECRETS.update(values)
         forwarding = docker("exec", self.name, "bash", "-ec",
@@ -370,6 +382,44 @@ INSERT INTO rc_links VALUES(1,2);
     proxy.expect("RC_CACHE velocity FALSE")
     backend.expect("RC_CACHE paper FALSE", before, timeout=120)
     passed("reconexion_luckperms")
+    begin("cliente_paper26_descubrimiento")
+    client_volume = new_volume("cliente26")
+    volume_exec(client_volume, "bash", "-ec", "mkdir -p /state/paper/plugins/PbtSharedDBClient; "
+                "cp /assets/paper_client.jar /state/paper/server.jar; cp /plugin/PbtSharedDB-Client-1.0.0.jar /state/paper/plugins/")
+    write(client_volume, "/state/paper/eula.txt", "eula=true\n")
+    write(client_volume, "/state/paper/server.properties", "server-ip=0.0.0.0\nserver-port=25565\nonline-mode=true\n"
+          "level-type=minecraft:flat\ngenerate-structures=false\nview-distance=2\nsimulation-distance=2\nmax-players=2\n")
+    token = docker("exec", proxy.name, "cat", DBROOT + "/discovery-secrets/lobby.key").stdout.strip()
+    sql_key = docker("exec", proxy.name, "cat", DBROOT + "/secrets/lp_client-172.30.86.12.key").stdout.strip()
+    SECRETS.update((token, sql_key))
+    volume_exec(fresh, "keytool", "-exportcert", "-alias", "discovery", "-keystore", DBROOT + "/discovery-tls.p12",
+                "-storepass:file", DBROOT + "/discovery-tls-password.key", "-file", "/state/discovery.cer")
+    fingerprint = volume_exec(fresh, "sha256sum", "/state/discovery.cer").stdout.split()[0]
+    client_root = "/state/paper/plugins/PbtSharedDBClient"
+    client_config = (f"config-version: 1\nenabled: true\nbootstrap-url: https://172.30.86.10:3307/v1/discovery\nclient-id: lobby\n"
+                     f"certificate-sha256: {fingerprint}\ntoken-file: discovery-token.key\nsql-password-file: sql-password.key\n")
+    write(client_volume, client_root + "/config.yml", client_config)
+    write(client_volume, client_root + "/discovery-token.key", token)
+    write(client_volume, client_root + "/sql-password.key", sql_key)
+    write(client_volume, "/state/paper/plugins/Ajeno/config.yml", "no modificar\n")
+    client_host = Host("cliente26", client_volume, paper=True, ip="172.30.86.12")
+    client_host.start()
+    client_host.expect("Cliente cargado")
+    client_host.command("pbtsharedbclient discover", "Conexión generada sin contraseña: SELECT 1 autenticado")
+    output = docker("exec", client_host.name, "cat", client_root + "/connections/lobby.yml").stdout
+    require("verification: authenticated-select-1" in output and not any(secret in output for secret in SECRETS), "Exportación incorrecta o con secretos")
+    bad_token = secrets.token_urlsafe(32)
+    SECRETS.add(bad_token)
+    write(client_volume, client_root + "/discovery-token.key", bad_token)
+    client_host.command("pbtsharedbclient discover", "No se generan datos nuevos")
+    require(docker("exec", client_host.name, "cat", client_root + "/connections/lobby.yml").stdout == output, "Un token inválido modificó el archivo")
+    write(client_volume, client_root + "/discovery-token.key", token)
+    write(client_volume, client_root + "/config.yml", client_config.replace(fingerprint, "0" * 64))
+    client_host.command("pbtsharedbclient discover", "No se generan datos nuevos")
+    require(docker("exec", client_host.name, "cat", client_root + "/connections/lobby.yml").stdout == output, "Un certificado inválido modificó el archivo")
+    require(docker("exec", client_host.name, "cat", "/state/paper/plugins/Ajeno/config.yml").stdout == "no modificar\n", "El cliente modificó configuración ajena")
+    client_host.stop()
+    passed("cliente_paper26_descubrimiento")
     backend.stop()
     proxy.stop(signal=True)
     security_reports()
@@ -401,6 +451,5 @@ finally:
             RESULTS[name] = "fallida"
     (REPORT / "resultado.json").write_text(json.dumps({"commit": os.getenv("GITHUB_SHA", "local"),
         "pruebas": RESULTS, "error": error, "artefactos": MANIFEST, "entorno": ENVIRONMENT,
-        "plugin_sha256": hashlib.sha256((ROOT / "build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar").read_bytes()).hexdigest()
-        if (ROOT / "build/libs/PbtSharedDB-1.0.0-SNAPSHOT.jar").exists() else None}, ensure_ascii=False, indent=2), encoding="utf-8")
+        "plugins_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT / "build/distributions").glob("*.jar")}}, ensure_ascii=False, indent=2), encoding="utf-8")
 sys.exit(1 if error else 0)

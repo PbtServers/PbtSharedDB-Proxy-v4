@@ -1,0 +1,2 @@
+dependencies { implementation('org.yaml:snakeyaml') { version { strictly '2.5' } } }
+// Artefacto interno del grafo Gradle: no tiene descriptor y no se distribuye.

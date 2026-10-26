@@ -1,0 +1,10 @@
+config-version: 1
+enabled: false
+# Endpoint único declarado por el administrador; no hay búsqueda ni escaneo.
+bootstrap-url: https://proxy.example.invalid:3307/v1/discovery
+client-id: lobby
+certificate-sha256: CAMBIAR_POR_HUELLA_DEL_CERTIFICADO_DEL_PROXY
+token-file: discovery-token.key
+# Opcional: clave SQL ya copiada por un administrador, no obtenida de descubrimiento.
+# Vacío: se exige conexión y saludo MariaDB, sin afirmar autenticación SQL.
+sql-password-file: ''

@@ -69,7 +69,7 @@ def command(value):
 
 try:
     expect("Done (")
-    assert any("Loaded plugin pbtsharedb 1.0.0-SNAPSHOT" in line for line in captured)
+    assert any("Loaded plugin pbtsharedb 1.0.0" in line for line in captured)
     assert any("127.0.0.1:" in line and "Listening on" in line for line in captured)
     command("pbtsharedb status")
     expect("Estado: detenido")

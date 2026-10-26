@@ -30,7 +30,7 @@ docker network create --subnet 172.30.85.0/24 pbtsharedb-pruebas
 docker run -d --name pbtsharedb-integracion --network pbtsharedb-pruebas --ip 172.30.85.10 \
   -v "$PWD/build:/work/build" -e PBT_REMOTE_PROBE=1 \
   -e GRADLE_USER_HOME=/work/build/integration-gradle pbtsharedb-integracion
-for intento in $(seq 1 120); do
+for intento in $(seq 1 600); do
   # La coordinación es 0700/mysql: el UID del runner no debe leer credenciales.
   if docker exec pbtsharedb-integracion test -f /work/build/remote-probe/ready 2>/dev/null; then break; fi
   if test "$(docker inspect -f '{{.State.Running}}' pbtsharedb-integracion)" != true; then

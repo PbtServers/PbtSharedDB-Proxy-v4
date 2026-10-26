@@ -1,0 +1,14 @@
+name: PbtSharedDBClient
+version: '1.0.0'
+main: com.pbtservers.sharedb.client.PbtSharedDBClient
+api-version: '26.1'
+description: Descubrimiento autenticado y archivos SQL de configuración manual
+authors: [PbtServers]
+commands:
+  pbtsharedbclient:
+    description: Verificar proxy y generar conexión sin contraseña
+    usage: /pbtsharedbclient discover
+    permission: pbtsharedb.client.admin
+permissions:
+  pbtsharedb.client.admin:
+    default: op
