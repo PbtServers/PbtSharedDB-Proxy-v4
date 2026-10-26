@@ -5,6 +5,9 @@ con MariaDB real, persistencia tras parada/arranque del gestor, SQL entre
 contenedores y copia/restauración lógica. Se ejecutó en un runner de Actions,
 sin Panel ni Wings. No acredita reinicio del contenedor, asignaciones/NAT,
 firewall o plazo de parada de Wings; consulte la [matriz](INTEGRACION-REAL.md).
+El [laboratorio RC1](EVIDENCIAS-RC1-2026-10-26.md) añade recreación del
+contenedor, restauración en volumen vacío y LuckPerms oficial. El procedimiento
+exacto pendiente en un nodo real está en [VALIDACION-RC1.md](VALIDACION-RC1.md).
 
 Cada servidor (Velocity, Lobby, Survival, Creative) está en su propio contenedor. MariaDB se ejecuta como proceso hijo dentro del contenedor Velocity; no hay Egg SQL separado. `127.0.0.1` desde Lobby apunta a Lobby. No sirve como dirección SQL del proxy para los backends.
 
@@ -60,7 +63,13 @@ Compruebe también rechazo desde un contenedor no autorizado y desde Internet. N
 
 Copie el JAR de build/libs a plugins/ del proxy Java 25 compatible con API 4.3.0. Arranque una vez para generar YAML, detenga, configure y arranque. El primer arranque inicializa solo un datadir vacío, sin cuentas remotas root ni base test. Revise `status` y los registros privados. Solo READY significa consulta autenticada completada. Configure los clientes después de aprovisionar sus credenciales.
 
-El orden de inicio entre LuckPerms y PbtSharedDB no está garantizado. En el primer despliegue aprovisione MariaDB antes de habilitar LuckPerms. En reinicios verifique que la versión de LuckPerms reintenta la conexión; puede necesitar reconectar o reiniciar el plugin cliente después de READY. La dependencia del SQL del propio proxy exige esta comprobación de aceptación; no se afirma que esperar el evento de Velocity ordene los plugins.
+En el primer despliegue aprovisione MariaDB para obtener las claves antes de
+configurar LuckPerms. PbtSharedDB usa prioridad de evento anterior a FIRST para
+iniciar SQL y posterior a LAST para cerrarlo. Ese orden, la reconexión SQL y
+la recreación del proxy se han probado con LuckPerms 5.5.88/Velocity 4.3.0 en CI.
+La versión, comando STARTUP y parada del Egg real deben comprobarse en el nodo;
+otros consumidores que accedan desde constructores no quedan ordenados por
+estos eventos. No se afirma que Wings esté validado por esas pruebas Docker.
 
 ## Apagado y recuperación
 

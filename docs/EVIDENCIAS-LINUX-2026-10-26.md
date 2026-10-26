@@ -1,5 +1,9 @@
 # Evidencias Linux del 26 de octubre de 2026
 
+Este documento conserva el estado histórico hasta `78e7b89`. Para recreación
+del anfitrión, volumen vacío y LuckPerms oficial, consulte las
+[evidencias posteriores de RC1](EVIDENCIAS-RC1-2026-10-26.md).
+
 Las ejecuciones enlazadas identifican el commit exacto. Un paso correcto no
 convierte en correcto el job global ni acredita pruebas posteriores omitidas.
 

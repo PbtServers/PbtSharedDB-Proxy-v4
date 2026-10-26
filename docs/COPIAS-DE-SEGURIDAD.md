@@ -14,8 +14,11 @@ La prueba `MariaDbIntegrationTest` ejecutó esta secuencia con MariaDB real en
 [Actions de 6911107](EVIDENCIAS-LINUX-2026-10-26.md): inicialización, INSERT,
 dump, parada y nuevo gestor, verificación de persistencia, DROP de tabla,
 restauración del dump, comprobación del texto Unicode y nueva lectura tras
-otro reinicio. No se ha probado restaurar en un datadir vacío ni datos reales
-de LuckPerms, y no se afirma restauración validada en producción.
+otro reinicio. El [laboratorio RC1](EVIDENCIAS-RC1-2026-10-26.md) comprueba además
+un volumen completamente vacío, inicialización/cuentas nuevas, importación,
+comparación de tablas/esquema/registros y CHECK TABLE, seguida de recreación del
+contenedor. No se ha restaurado un conjunto de permisos de LuckPerms sobre un
+volumen vacío ni se afirma restauración validada en Wings/producción.
 
 1. Detenga clientes y proxy, conserve íntegro el directorio actual. No restaure encima de producción sin validar. Prepare una copia aislada de la imagen, volumen y plugin con el mismo motor 11.4.13.
 2. Declare las bases/usuarios necesarios. Arranque el gestor para inicializar un datadir vacío y espere READY. Copie el dump por un canal privado, compruebe su procedencia e integridad (mantenga un SHA-256 externo al exportar).

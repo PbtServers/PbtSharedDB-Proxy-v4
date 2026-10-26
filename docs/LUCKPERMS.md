@@ -1,10 +1,12 @@
 # LuckPerms entre Velocity, Lobby, Survival y Creative
 
-Estado de validación: MariaDB real y las consultas SQL entre contenedores
-han pasado en [Actions](EVIDENCIAS-LINUX-2026-10-26.md). La suite utiliza una
-base llamada luckperms, pero no carga el plugin: no acredita creación de sus
-tablas, propagación, mensajería SQL ni reconexión. No hay pruebas automatizadas
-de LuckPerms disponibles en este repositorio; esos puntos siguen pendientes.
+Estado de validación: [el laboratorio RC1](EVIDENCIAS-RC1-2026-10-26.md) carga
+LuckPerms oficial 5.5.88 en Velocity 4.3.0 y Paper 1.21.8. Verifica sus tablas
+y escritura real, propagación bidireccional mediante mensajería SQL y cachés
+efectivas del grupo default, reconexión tras reiniciar SQL y recreación del
+proxy con Paper activo. Los observadores no hacen JDBC ni recargan storage.
+No hay jugadores conectados en CI: login, forwarding y las instancias reales
+de Wings siguen pendientes del [procedimiento de aceptación](VALIDACION-RC1.md).
 
 Instale la edición Velocity de LuckPerms en el proxy y la edición adecuada para cada backend. La configuración de referencia oficial consultada admite `storage-method: mariadb` y `messaging-service: sql` (esta mensajería usa la misma base). Verifique esas opciones en la versión exacta instalada. No se modifica LuckPerms ni se implementa un puente de permisos propio.
 
@@ -34,7 +36,14 @@ En Survival y Creative cambie server/username/password. En Velocity use `server:
 
 Después de conectar, cree un grupo o permiso de prueba y verifique su propagación en los cuatro servidores. Use `lp networksync` según la edición instalada. Revise errores de conexión y que no existan prefijos distintos o datos locales H2 que todavía no se hayan migrado. Cambiar storage-method no migra automáticamente permisos previos: siga la exportación/importación oficial de su versión y conserve la copia previa.
 
-LuckPerms puede intentar conectarse antes de que MariaDB esté listo en el propio proxy. Verifique su reconexión tras READY y su comportamiento al reiniciar MariaDB. No se ofrece orden de inicialización garantizado ni se ha ejecutado una prueba con LuckPerms localmente. Pruebe en un nodo aislado antes de usar esta arquitectura como dependencia de permisos.
+El laboratorio reprodujo un fallo de orden: LuckPerms intentaba iniciar SQL
+antes de PbtSharedDB y no activaba la mensajería. PbtSharedDB inicia ahora con
+prioridad Short.MAX_VALUE, antes de FIRST en Velocity, y cierra con
+Short.MIN_VALUE, después de LAST. La continuación del evento espera el SELECT 1
+autenticado. El log probado muestra READY antes de habilitar LuckPerms y el
+cierre de Hikari antes de MariaDB. Esto se ha ejecutado con las versiones
+indicadas; pruebe cualquier cambio de versión, prioridad o consumidor que
+acceda a SQL desde su constructor en un entorno aislado.
 
 Compartir permisos no comparte economía o inventarios. Esas funciones requieren plugins con soporte SQL compartido, mecanismos de concurrencia y esquema propios. Use una base y cuentas separadas por aplicación; no modifique tablas de LuckPerms para guardar esos datos.
 

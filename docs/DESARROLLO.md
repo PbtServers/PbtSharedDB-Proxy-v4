@@ -54,8 +54,16 @@ La carga en Velocity oficial se comprueba con `python tests/velocity_smoke.py --
 MariaDB Linux y las consultas desde otros contenedores han pasado en Actions,
 incluyendo persistencia, parada del proceso gestionado y backup/restauración
 lógica: [evidencias](EVIDENCIAS-LINUX-2026-10-26.md). Siguen pendientes apagado
-y reinicio del contenedor con Wings, integración LuckPerms y exposición/firewall.
+y reinicio del contenedor con Wings, LuckPerms con jugadores en ese nodo y exposición/firewall.
 Consulte [PTERODACTYL.md](PTERODACTYL.md) para aceptación manual.
+
+Para las pruebas previas a RC1, ejecute `python3 tests/rc_integration.py`
+después de build y del laboratorio anterior. No requiere nuevas dependencias
+Gradle: los observadores se compilan con las API de los JAR oficiales fijados
+por hash. Consulte [procedimiento y alcance](VALIDACION-RC1.md) y
+[evidencias](EVIDENCIAS-RC1-2026-10-26.md). El job rc1 usa el artefacto build
+del mismo commit y publica únicamente resultado.json, logs redactados y hash
+de los datos comparados, sin volúmenes, claves ni dumps.
 
 ## Contribuciones
 

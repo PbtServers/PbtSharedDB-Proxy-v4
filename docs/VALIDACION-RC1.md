@@ -45,13 +45,16 @@ Los observadores de `tests/rc-probe/` se compilan contra las API que llevan esos
 artefactos. Consultan la caché real del grupo default y no llaman al storage:
 un comando LuckPerms en Velocity concede `pbt.rc1.propagacion`, Paper debe
 observar TRUE; Paper lo cambia a false y Velocity debe observar FALSE.
-Tras reiniciar SQL, se repite la propagación. La comprobación se hace sin
+Tras reiniciar SQL, se repite la propagación. Además se elimina y recrea el
+proxy con LuckPerms manteniendo Paper arrancado, se exige el permiso persistido
+y se vuelve a comprobar otro cambio en Paper. La comprobación se hace sin
 jugadores conectados: no acredita login, forwarding ni permisos de jugadores
 en una sesión Minecraft real. No se desactiva la autenticación SQL o Minecraft.
 
 Informes publicables: `build/reports/rc/resultado.json`, logs redactados y hash
 de datos. El resultado distingue pruebas superadas de no ejecutadas. Las claves
-se comparan en memoria contra los logs de consola, inicialización y MariaDB;
+SQL y el secreto de forwarding se comparan en memoria contra los logs de
+consola, inicialización y MariaDB;
 si aparecen, la prueba falla y se redactan antes de escribir el informe. No se
 publican volúmenes, dumps ni archivos de configuración privados. Los recursos
 creados por el run se retiran al finalizar. La caída forzada (SIGKILL) no forma
@@ -71,7 +74,8 @@ horas UTC, comandos ejecutados y resultados; nunca contraseñas.
 2. Copie el JAR probado y genere config con el motor deshabilitado. Detenga el
    proxy. Asegure que `plugins/pbtsharedb` pertenece al UID del servidor sobre
    su volumen persistente (directorios 0700, claves 0600). Registre el montaje
-   con `docker inspect <ID_PROXY>` en el nodo. No comparta ese datadir.
+   con `docker inspect --format '{{json .Mounts}}' <ID_PROXY>` en el nodo.
+   No publique el entorno del contenedor ni comparta ese datadir.
 3. Reserve en el Panel una asignación TCP SQL exclusiva (ejemplo 3307).
    Configure port/allocated-port=3307 y acceso remoto solo después de comprobar
    red privada y firewall. Registre asignación, IP privada alcanzable y NAT.
@@ -102,3 +106,43 @@ horas UTC, comandos ejecutados y resultados; nunca contraseñas.
 8. Adjunte el acta a la matriz. Cualquier paso fallido o no ejecutado bloquea
    su correspondiente criterio. Sin ese acta no se declara Wings validado ni
    la versión lista para producción. No se publica una release estable aquí.
+
+Comandos de inspección en el nodo (sustituya los identificadores, sin secretos):
+
+```sh
+PROXY_ID='ID_REAL_DEL_CONTENEDOR_PROXY'
+WINGS_NETWORK='NOMBRE_REAL_DE_RED'
+docker inspect --format '{{json .Mounts}}' "$PROXY_ID"
+docker inspect --format '{{json .NetworkSettings.Ports}}' "$PROXY_ID"
+docker inspect --format '{{json .NetworkSettings.Networks}}' "$PROXY_ID"
+docker network inspect "$WINGS_NETWORK"
+docker exec "$PROXY_ID" sh -ec 'id; pwd; /usr/sbin/mariadbd --no-defaults --version; /usr/bin/mariadb --no-defaults --version'
+docker exec "$PROXY_ID" sh -ec 'stat -c "%a %U" plugins/pbtsharedb/data plugins/pbtsharedb/secrets plugins/pbtsharedb/secrets/*.key'
+```
+
+Para la comprobación entre contenedores, guarde el archivo cliente del ejemplo
+de [PTERODACTYL.md](PTERODACTYL.md) como 0600 en cada backend. Ejecute dentro
+del backend autorizado:
+
+```sh
+mariadb --defaults-file=/ruta/privada/cliente.cnf --protocol=tcp --connect-timeout=5 \
+  -e 'SELECT USER(),CURRENT_USER(),DATABASE(); SHOW TABLES;'
+```
+
+En las consolas Minecraft, después de conectar un jugador ficticio no operador:
+
+```text
+# Velocity (sustituir UUID por el del jugador de prueba)
+lpv creategroup rcaceptacion
+lpv user UUID parent add rcaceptacion
+lpv group rcaceptacion permission set pbt.rc1.wings true
+# Backend: comprobar el permiso efectivo y negarlo
+lp user UUID permission check pbt.rc1.wings
+lp group rcaceptacion permission set pbt.rc1.wings false
+# Velocity: exigir resultado false; repetir tras Stop/Start del Panel
+lpv user UUID permission check pbt.rc1.wings
+```
+
+No use reload/networksync para ocultar un fallo de propagación automática.
+Al terminar, retire al usuario del grupo y elimine el grupo de prueba. Guarde
+solo la salida saneada y el UUID ficticio, sin dumps ni configuración privada.

@@ -2,7 +2,7 @@
 
 Plugin para Velocity API **4.3.0**, Java **25** y MariaDB **11.4.13** nativo dentro del contenedor del proxy. Versión `1.0.0-SNAPSHOT`, ID `pbtsharedb`, paquete `com.pbtservers.sharedb`. Proyecto de PbtServers para compartir almacenamiento SQL entre servidores Minecraft en Pterodactyl, sin Egg MariaDB separado.
 
-Implementación compilada, con 20 pruebas unitarias y dos tests de integración MariaDB real correctos en Linux mediante Actions. Se han comprobado inicialización, JDBC, SQL entre contenedores, persistencia tras parada/arranque del gestor y backup/restauración lógica. También se ha comprobado la carga en Velocity 4.3.0 build 44, Java 25, con el motor deshabilitado. **Wings y LuckPerms real siguen pendientes**. Consulte las [evidencias verificables](docs/EVIDENCIAS-LINUX-2026-10-26.md) y la [matriz de aceptación](docs/INTEGRACION-REAL.md).
+Validación previa a RC1: 22 unitarios y dos ejecuciones de tres tests MariaDB reales en Linux. El laboratorio RC añade recreación de Velocity/PbtSharedDB conservando el volumen, restauración sobre otro volumen vacío y LuckPerms oficial Velocity↔Paper, con escritura y propagación verificadas en sus cachés reales. También comprueba reconexión tras reiniciar SQL y recrear el proxy con Paper activo. **Wings, Egg y sesiones de jugadores reales siguen pendientes**; la versión continúa SNAPSHOT. Consulte las [evidencias RC1](docs/EVIDENCIAS-RC1-2026-10-26.md), la [matriz de aceptación](docs/INTEGRACION-REAL.md) y el [procedimiento restante en Pterodactyl](docs/VALIDACION-RC1.md).
 
 ## Arquitectura y funciones implementadas
 
