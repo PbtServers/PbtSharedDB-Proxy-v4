@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
+command -v docker >/dev/null || { echo 'El laboratorio exige Docker con contenedores Linux.' >&2; exit 1; }
+docker info >/dev/null
 if docker container inspect pbtsharedb-integracion >/dev/null 2>&1 || docker network inspect pbtsharedb-pruebas >/dev/null 2>&1; then
   echo 'Ya existe un recurso del laboratorio; no se modifica. Revise su propietario.' >&2
   exit 1
@@ -18,10 +20,10 @@ docker build -t pbtsharedb-integracion -f tests/Dockerfile .
 mkdir -p build/integration-gradle
 # No aceptar señales/resultados de una ejecución anterior en un runner reutilizado.
 rm -f build/remote-probe/ready build/remote-probe/passed build/remote-probe/result build/remote-probe/client.cnf
-chmod -R a+rwX build .gradle
+chmod -R a+rwX build
 docker network create --subnet 172.30.85.0/24 pbtsharedb-pruebas
 docker run -d --name pbtsharedb-integracion --network pbtsharedb-pruebas --ip 172.30.85.10 \
-  -v "$PWD:/work" -e PBT_REMOTE_PROBE=1 \
+  -v "$PWD/build:/work/build" -e PBT_REMOTE_PROBE=1 \
   -e GRADLE_USER_HOME=/work/build/integration-gradle pbtsharedb-integracion
 for intento in $(seq 1 120); do
   if test -f build/remote-probe/ready; then break; fi

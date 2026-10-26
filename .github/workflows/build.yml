@@ -39,4 +39,6 @@ jobs:
           name: informes-pruebas
           path: |
             build/reports/tests/
+            build/test-results/
+            build/reports/dependency-verification/
             build/reports/velocity-smoke/*.log

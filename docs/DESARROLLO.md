@@ -35,15 +35,17 @@ resultados unitarios de la aceptación pendiente en Wings/LuckPerms.
 `integrationTest` está separado, exige Linux y herramientas MariaDB 11.4.13 reales, y falla si faltan; no se omite silenciosamente. Comprueba inicialización sin root, SELECT 1 TCP, permisos mínimos, rechazo de root TCP, persistencia, copia lógica, restauración y exclusión de otra instancia. Puerto local de prueba 13316; no lo ocupe. Ejecución con Docker en Linux:
 
 ```sh
-docker build -t pbtsharedb-integracion -f tests/Dockerfile .
-mkdir -p build/integration-gradle
-# Solo en una copia de trabajo de pruebas, el UID mysql necesita escribir resultados/cache.
-chmod -R a+rwX build .gradle
-docker run --rm -v "$PWD:/work" \
-  -e GRADLE_USER_HOME=/work/build/integration-gradle pbtsharedb-integracion
+bash ./gradlew clean build --no-daemon
+bash tests/integration-linux.sh
 ```
 
-Antes ejecute build para crear `.gradle` y build. El chmod anterior se limita a resultados/cache de esa copia de trabajo; nunca se aplica al directorio del plugin en producción. La imagen usa mysql como usuario de ejecución, no su entrypoint de servicio MariaDB. El test arranca su propio mariadbd mediante ProcessBuilder.
+El laboratorio copia las fuentes a la imagen con propietario mysql y monta solo
+los resultados/cache bajo build. No monte el repositorio del host en /work:
+Gradle 9 exige que la raíz del proyecto sea escribible por su usuario.
+El script prepara los permisos de build solo en esta copia desechable; nunca
+se aplica al directorio del plugin en producción. La imagen usa mysql como
+usuario de ejecución, no su entrypoint de servicio MariaDB. El test arranca
+su propio mariadbd mediante ProcessBuilder. Reconstruya al cambiar fuentes.
 
 GitHub Actions compila, ejecuta unitarios, publica el JAR como artefacto y prepara esta integración Docker, conservando los informes. Además activa PBT_REMOTE_PROBE=1 y conecta un segundo contenedor MariaDB cliente, en una red de pruebas aislada con IP explícita conocida, para consultar el registro de aplicación mediante una cuenta remota sin privilegios globales. Esas IP fijas son solo un fixture de pruebas, nunca una suposición sobre Wings. No publica releases ni despliega en Wings. Las etiquetas base de las imágenes Docker se fijan por versión pero no por digest; para auditoría reproducible registre sus digests en el despliegue.
 

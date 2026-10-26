@@ -1,6 +1,13 @@
 # Validación de integración de v1.0.0
 
-Estado de esta revisión (26/10/2026): no hay Docker disponible en PATH y
+Estado de esta revisión (26/10/2026): [Actions de dfcf60d](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40304776222)
+confirma `clean build` y carga real de Velocity correctos en Ubuntu 24.04.5,
+Java Temurin 25.0.4+1. La verificación SHA-256 funciona en Linux. El laboratorio
+Docker falló antes de ejecutar JUnit: `/work` no era escribible por mysql.
+La corrección copia las fuentes a la imagen con propietario mysql y monta
+solo build. Su ejecución SQL sigue pendiente hasta disponer del nuevo informe.
+
+En el equipo Windows no hay Docker disponible en PATH y
 `wsl --list --quiet` informa que WSL no está instalado. No se ha ejecutado
 MariaDB en Linux, Wings ni LuckPerms en este equipo. Compilar los tests
 de integración no equivale a ejecutarlos. La versión sigue siendo SNAPSHOT.
@@ -23,7 +30,9 @@ CI utiliza el mismo script. Reserva la red 172.30.85.0/24 y los nombres
 `pbtsharedb-integracion` y `pbtsharedb-pruebas`; rechaza recursos existentes.
 No publica puertos al host. El servidor y los clientes SQL se ejecutan como
 mysql; la limpieza de la credencial compartida usa un contenedor efímero root.
-Solo se amplían permisos de build y .gradle en esta copia desechable.
+Solo se amplían permisos de build en esta copia desechable. Las fuentes se
+copian durante docker build a /work con propietario mysql; no se monta el
+repositorio del host sobre ese directorio. Reconstruya la imagen al cambiar código.
 Las imágenes están fijadas por versión, no por digest: registre los digests
 de `docker image inspect` junto al informe para identificar los binarios usados.
 
@@ -44,6 +53,8 @@ No publique secretos, dumps ni configuraciones privadas como artefactos.
 
 | Prueba | Evidencia exigida | Estado actual |
 |---|---|---|
+| SHA-256 y build Linux | Actions 40304776222, job 121511073969, paso 5 | Superada en dfcf60d |
+| Carga de Velocity Linux sin SQL | Mismo job, paso 6 | Superada en dfcf60d |
 | MariaDB Linux y SQL entre contenedores | Informe JUnit y salida del laboratorio | Pendiente |
 | Reinicio desde Panel | Registro antes/después, mismo volumen y lectura del dato confirmado | Pendiente |
 | Parada Wings | MariaDB termina antes del timeout, siguiente arranque READY | Pendiente |

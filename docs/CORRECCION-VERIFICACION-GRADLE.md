@@ -51,6 +51,9 @@ Resultado final: 19 pruebas unitarias, cero fallos, errores u omisiones.
 `build/reports/tests/test/`; `clean` elimina los informes de verificación de
 los intentos anteriores.
 
-No se ha ejecutado Actions con este commit ni las pruebas Linux/MariaDB,
-Wings o LuckPerms. Esta corrección valida la compilación local con integridad
-activa; no acredita el resto del pipeline ni la integración SQL.
+Validación posterior: [Actions 40304776222](https://github.com/PbtServers/PbtSharedDB-Proxy-v4/actions/runs/40304776222)
+ejecutó `dfcf60d` en Ubuntu 24.04.5/Temurin 25.0.4+1. `clean build` terminó
+correctamente (46 s) y también la carga real de Velocity. La corrección de
+integridad queda confirmada en Linux. El job global falló después por permisos
+de /work en el laboratorio Docker, antes de ejecutar pruebas SQL. Consulte
+[la matriz actualizada](INTEGRACION-REAL.md); Wings y LuckPerms siguen pendientes.

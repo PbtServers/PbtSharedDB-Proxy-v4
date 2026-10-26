@@ -4,7 +4,11 @@ FROM mariadb:11.4.13
 COPY --from=java /opt/java/openjdk /opt/java/openjdk
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="/opt/java/openjdk/bin:${PATH}"
-USER mysql
+RUN mkdir -p /work && chown mysql:mysql /work
 WORKDIR /work
+COPY --chown=mysql:mysql gradlew build.gradle settings.gradle gradle.lockfile ./
+COPY --chown=mysql:mysql gradle/ ./gradle/
+COPY --chown=mysql:mysql src/ ./src/
+USER mysql
 ENTRYPOINT []
 CMD ["bash", "./gradlew", "integrationTest", "--no-daemon", "--console=plain"]
